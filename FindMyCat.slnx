@@ -3,6 +3,6 @@
   <Project Path="FindMyCat.Core/FindMyCat.Core.csproj" />
   <Project Path="FindMyCat.Data/FindMyCat.Data.csproj" />
   <Project Path="frontend/frontend.esproj" />
-  <Project Path="tests/FindMyCat.UnitTests/FindMyCat.UnitTests.csproj" />
-  <Project Path="tests/FindMyCat.IntegrationTests/FindMyCat.IntegrationTests.csproj" />
+  <Project Path="FindMyCat.UnitTests/FindMyCat.UnitTests.csproj" />
+  <Project Path="FindMyCat.IntegrationTests/FindMyCat.IntegrationTests.csproj" />
 </Solution>
