@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/1.0.6311650">
+  <PropertyGroup>
+    <StartupCommand>npm run dev</StartupCommand>
+  </PropertyGroup>
+</Project>

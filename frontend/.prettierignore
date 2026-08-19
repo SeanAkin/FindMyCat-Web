@@ -1,0 +1,7 @@
+dist
+coverage
+cypress/screenshots
+cypress/videos
+src/components/ui
+obj
+bin
