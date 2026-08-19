@@ -35,7 +35,7 @@ public class TraccarServiceTests
         _client.Setup(c => c.GetDevicesWithPositionsAsync("stored-token", It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        await _sut.GetDevicesAsync();
+        await _sut.GetDevicesAsync(TestContext.Current.CancellationToken);
 
         _client.Verify(c => c.GetDevicesWithPositionsAsync("stored-token", It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -49,7 +49,7 @@ public class TraccarServiceTests
         _client.Setup(c => c.GetPositionsAsync("tok", 1, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync([position]);
 
-        var result = await _sut.GetLatestPositionAsync(1);
+        var result = await _sut.GetLatestPositionAsync(1, TestContext.Current.CancellationToken);
 
         result.ShouldBe(position);
     }
@@ -61,7 +61,7 @@ public class TraccarServiceTests
         _client.Setup(c => c.GetPositionsAsync("tok", 1, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var result = await _sut.GetLatestPositionAsync(1);
+        var result = await _sut.GetLatestPositionAsync(1, TestContext.Current.CancellationToken);
 
         result.ShouldBeNull();
     }
@@ -75,7 +75,7 @@ public class TraccarServiceTests
         _client.Setup(c => c.GetPositionsAsync("tok", 1, from, to, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        await _sut.GetHistoryAsync(1, from, to);
+        await _sut.GetHistoryAsync(1, from, to, TestContext.Current.CancellationToken);
 
         _client.Verify(c => c.GetPositionsAsync("tok", 1, from, to, It.IsAny<CancellationToken>()), Times.Once);
     }

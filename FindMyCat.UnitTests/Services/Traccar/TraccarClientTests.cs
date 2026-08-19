@@ -37,7 +37,7 @@ public class TraccarClientTests
         });
         var client = CreateClient(handler);
 
-        var devices = await client.GetDevicesWithPositionsAsync("tok");
+        var devices = await client.GetDevicesWithPositionsAsync("tok", TestContext.Current.CancellationToken);
 
         devices.Count.ShouldBe(2);
 
@@ -67,7 +67,7 @@ public class TraccarClientTests
         });
         var client = CreateClient(handler);
 
-        await client.GetDevicesWithPositionsAsync("secret-token");
+        await client.GetDevicesWithPositionsAsync("secret-token", TestContext.Current.CancellationToken);
 
         handler.Requests.ShouldAllBe(r =>
             r.Headers.Authorization!.Scheme == "Bearer" && r.Headers.Authorization.Parameter == "secret-token");
@@ -79,7 +79,7 @@ public class TraccarClientTests
         var handler = StubHttpMessageHandler.ReturningJson(_ => (HttpStatusCode.OK, PositionsJson));
         var client = CreateClient(handler);
 
-        var positions = await client.GetPositionsAsync("tok", deviceId: 1, from: null, to: null);
+        var positions = await client.GetPositionsAsync("tok", deviceId: 1, from: null, to: null, TestContext.Current.CancellationToken);
 
         positions.Count.ShouldBe(1);
         positions[0].DeviceId.ShouldBe(1);
@@ -97,7 +97,7 @@ public class TraccarClientTests
 
         var from = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
         var to = new DateTimeOffset(2025, 1, 3, 0, 0, 0, TimeSpan.Zero);
-        await client.GetPositionsAsync("tok", deviceId: 1, from, to);
+        await client.GetPositionsAsync("tok", deviceId: 1, from, to, TestContext.Current.CancellationToken);
 
         var query = handler.Requests.Single().RequestUri!.Query;
         query.ShouldContain("deviceId=1");
