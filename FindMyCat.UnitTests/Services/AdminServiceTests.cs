@@ -32,7 +32,7 @@ public class AdminServiceTests
             .Setup(r => r.AddAsync("friend@example.com", addedByUserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
 
-        var result = await _sut.AddAllowedEmailAsync("friend@example.com", addedByUserId);
+        var result = await _sut.AddAllowedEmailAsync("friend@example.com", addedByUserId, TestContext.Current.CancellationToken);
 
         result.ShouldBe(expected);
     }
@@ -47,7 +47,7 @@ public class AdminServiceTests
             .Setup(r => r.RemoveAsync("missing@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        var result = await _sut.RemoveAllowedEmailAsync("missing@example.com");
+        var result = await _sut.RemoveAllowedEmailAsync("missing@example.com", TestContext.Current.CancellationToken);
 
         result.ShouldBe(RemoveAllowedEmailResult.NotFound);
     }
@@ -62,7 +62,7 @@ public class AdminServiceTests
             .Setup(r => r.RemoveAsync("friend@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var result = await _sut.RemoveAllowedEmailAsync("friend@example.com");
+        var result = await _sut.RemoveAllowedEmailAsync("friend@example.com", TestContext.Current.CancellationToken);
 
         result.ShouldBe(RemoveAllowedEmailResult.Removed);
     }
@@ -82,7 +82,7 @@ public class AdminServiceTests
                 IsPrimaryAdministrator = true
             });
 
-        var result = await _sut.RemoveAllowedEmailAsync("founder@example.com");
+        var result = await _sut.RemoveAllowedEmailAsync("founder@example.com", TestContext.Current.CancellationToken);
 
         result.ShouldBe(RemoveAllowedEmailResult.PrimaryAdministratorProtected);
         _allowedEmailRepository.Verify(r => r.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -94,7 +94,7 @@ public class AdminServiceTests
         var userId = Guid.NewGuid();
         _userRepository.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
 
-        var result = await _sut.SetUserRoleAsync(userId, UserRole.Administrator);
+        var result = await _sut.SetUserRoleAsync(userId, UserRole.Administrator, TestContext.Current.CancellationToken);
 
         result.ShouldBe(SetUserRoleResult.UserNotFound);
         _userRepository.Verify(r => r.UpdateRoleAsync(It.IsAny<Guid>(), It.IsAny<UserRole>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -115,7 +115,7 @@ public class AdminServiceTests
                 IsPrimaryAdministrator = false
             });
 
-        var result = await _sut.SetUserRoleAsync(userId, UserRole.Administrator);
+        var result = await _sut.SetUserRoleAsync(userId, UserRole.Administrator, TestContext.Current.CancellationToken);
 
         result.ShouldBe(SetUserRoleResult.Success);
         _userRepository.Verify(r => r.UpdateRoleAsync(userId, UserRole.Administrator, It.IsAny<CancellationToken>()), Times.Once);
@@ -136,7 +136,7 @@ public class AdminServiceTests
                 IsPrimaryAdministrator = false
             });
 
-        var result = await _sut.SetUserRoleAsync(userId, UserRole.User);
+        var result = await _sut.SetUserRoleAsync(userId, UserRole.User, TestContext.Current.CancellationToken);
 
         result.ShouldBe(SetUserRoleResult.Success);
         _userRepository.Verify(r => r.UpdateRoleAsync(userId, UserRole.User, It.IsAny<CancellationToken>()), Times.Once);
@@ -157,7 +157,7 @@ public class AdminServiceTests
                 IsPrimaryAdministrator = true
             });
 
-        var result = await _sut.SetUserRoleAsync(userId, UserRole.User);
+        var result = await _sut.SetUserRoleAsync(userId, UserRole.User, TestContext.Current.CancellationToken);
 
         result.ShouldBe(SetUserRoleResult.PrimaryAdministratorProtected);
         _userRepository.Verify(r => r.UpdateRoleAsync(It.IsAny<Guid>(), It.IsAny<UserRole>(), It.IsAny<CancellationToken>()), Times.Never);

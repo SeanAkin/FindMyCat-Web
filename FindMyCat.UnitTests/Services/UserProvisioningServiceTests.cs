@@ -34,7 +34,7 @@ public class UserProvisioningServiceTests
             .Setup(r => r.GetByGoogleSubjectIdAsync("google-123", It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingUser);
 
-        var result = await _sut.ProvisionOrSignInAsync(new GoogleUserInfo("google-123", "cat@example.com", "Cat Owner"));
+        var result = await _sut.ProvisionOrSignInAsync(new GoogleUserInfo("google-123", "cat@example.com", "Cat Owner"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
         result.User.ShouldBe(existingUser);
@@ -57,7 +57,7 @@ public class UserProvisioningServiceTests
             .Setup(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((User u, CancellationToken _) => u);
 
-        var result = await _sut.ProvisionOrSignInAsync(new GoogleUserInfo("google-1", "admin@example.com", "First User"));
+        var result = await _sut.ProvisionOrSignInAsync(new GoogleUserInfo("google-1", "admin@example.com", "First User"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
         result.User!.Role.ShouldBe(UserRole.Administrator);
@@ -82,7 +82,7 @@ public class UserProvisioningServiceTests
             .Setup(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((User u, CancellationToken _) => u);
 
-        var result = await _sut.ProvisionOrSignInAsync(new GoogleUserInfo("google-3", "allowed@example.com", "Allowed Person"));
+        var result = await _sut.ProvisionOrSignInAsync(new GoogleUserInfo("google-3", "allowed@example.com", "Allowed Person"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
         result.User!.Role.ShouldBe(UserRole.User);
@@ -102,7 +102,7 @@ public class UserProvisioningServiceTests
             .Setup(r => r.IsAllowedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        var result = await _sut.ProvisionOrSignInAsync(new GoogleUserInfo("google-4", "stranger@example.com", "Stranger"));
+        var result = await _sut.ProvisionOrSignInAsync(new GoogleUserInfo("google-4", "stranger@example.com", "Stranger"), TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeFalse();
         result.DenialReason.ShouldNotBeNullOrWhiteSpace();

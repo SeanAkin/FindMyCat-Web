@@ -21,7 +21,7 @@ public class HologramClientTests
             (HttpStatusCode.OK, """{"success":true,"data":[{"id":555,"name":"unique-1"}]}"""));
         var client = CreateClient(handler);
 
-        var id = await client.FindDeviceIdByImeiAsync("key", "unique-1");
+        var id = await client.FindDeviceIdByImeiAsync("key", "unique-1", TestContext.Current.CancellationToken);
 
         id.ShouldBe(555);
     }
@@ -32,7 +32,7 @@ public class HologramClientTests
         var handler = StubHttpMessageHandler.ReturningJson(_ => (HttpStatusCode.OK, """{"success":true,"data":[]}"""));
         var client = CreateClient(handler);
 
-        var id = await client.FindDeviceIdByImeiAsync("key", "no-match");
+        var id = await client.FindDeviceIdByImeiAsync("key", "no-match", TestContext.Current.CancellationToken);
 
         id.ShouldBeNull();
     }
@@ -43,7 +43,7 @@ public class HologramClientTests
         var handler = StubHttpMessageHandler.ReturningJson(_ => (HttpStatusCode.OK, """{"success":true,"data":[]}"""));
         var client = CreateClient(handler);
 
-        await client.FindDeviceIdByImeiAsync("secret-key", "device-imei");
+        await client.FindDeviceIdByImeiAsync("secret-key", "device-imei", TestContext.Current.CancellationToken);
 
         var request = handler.Requests.Single();
         request.Headers.Authorization!.Scheme.ShouldBe("Basic");
@@ -65,7 +65,7 @@ public class HologramClientTests
         });
         var client = CreateClient(handler);
 
-        await client.SendMessageAsync("key", 555, "lost");
+        await client.SendMessageAsync("key", 555, "lost", TestContext.Current.CancellationToken);
 
         handler.Requests.Single().Method.ShouldBe(HttpMethod.Post);
         capturedBody.ShouldContain("\"deviceids\":[555]");
@@ -81,7 +81,7 @@ public class HologramClientTests
             (HttpStatusCode.Forbidden, """{"success":false,"error":"Invalid API Key"}"""));
         var client = CreateClient(handler);
 
-        var ex = await Should.ThrowAsync<HologramUpstreamException>(() => client.FindDeviceIdByImeiAsync("bad", "name"));
+        var ex = await Should.ThrowAsync<HologramUpstreamException>(() => client.FindDeviceIdByImeiAsync("bad", "name", TestContext.Current.CancellationToken));
 
         ex.CredentialRejected.ShouldBeTrue();
     }
@@ -93,7 +93,7 @@ public class HologramClientTests
             (HttpStatusCode.BadRequest, """{"success":false,"error":"Some device IDs are invalid"}"""));
         var client = CreateClient(handler);
 
-        var ex = await Should.ThrowAsync<HologramUpstreamException>(() => client.SendMessageAsync("key", 1, "ping"));
+        var ex = await Should.ThrowAsync<HologramUpstreamException>(() => client.SendMessageAsync("key", 1, "ping", TestContext.Current.CancellationToken));
 
         ex.CredentialRejected.ShouldBeFalse();
         ex.Message.ShouldBe("Some device IDs are invalid");
@@ -105,6 +105,6 @@ public class HologramClientTests
         var handler = StubHttpMessageHandler.ReturningJson(_ => (HttpStatusCode.OK, "not json"));
         var client = CreateClient(handler);
 
-        await Should.ThrowAsync<HologramUpstreamException>(() => client.FindDeviceIdByImeiAsync("key", "name"));
+        await Should.ThrowAsync<HologramUpstreamException>(() => client.FindDeviceIdByImeiAsync("key", "name", TestContext.Current.CancellationToken));
     }
 }

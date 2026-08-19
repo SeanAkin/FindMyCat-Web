@@ -69,7 +69,7 @@ public class HologramServiceTests
         HasTraccarDevices(new TraccarDevice(1, "Nova", "unique-1", "online", null, false, null));
         _client.Setup(c => c.FindDeviceIdByImeiAsync("key", "unique-1", It.IsAny<CancellationToken>())).ReturnsAsync(42);
 
-        await _sut.SendCommandAsync(1, command);
+        await _sut.SendCommandAsync(1, command, TestContext.Current.CancellationToken);
 
         _client.Verify(c => c.SendMessageAsync("key", 42, wireValue, It.IsAny<CancellationToken>()), Times.Once);
     }

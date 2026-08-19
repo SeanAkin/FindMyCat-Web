@@ -25,7 +25,7 @@ public class CredentialServiceTests
         _repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync((SharedCredential?)null);
 
-        var status = await _sut.GetStatusAsync();
+        var status = await _sut.GetStatusAsync(TestContext.Current.CancellationToken);
 
         status.TraccarConfigured.ShouldBeFalse();
         status.HologramConfigured.ShouldBeFalse();
@@ -41,7 +41,7 @@ public class CredentialServiceTests
                 HologramApiKeyProtected = null
             });
 
-        var status = await _sut.GetStatusAsync();
+        var status = await _sut.GetStatusAsync(TestContext.Current.CancellationToken);
 
         status.TraccarConfigured.ShouldBeTrue();
         status.HologramConfigured.ShouldBeFalse();
@@ -58,7 +58,7 @@ public class CredentialServiceTests
             .Callback<SharedCredential, CancellationToken>((c, _) => saved = c)
             .Returns(Task.CompletedTask);
 
-        await _sut.SetTraccarTokenAsync("secret-token");
+        await _sut.SetTraccarTokenAsync("secret-token", TestContext.Current.CancellationToken);
 
         saved.ShouldNotBeNull();
         saved.Id.ShouldBe(SharedCredential.SingletonId);
@@ -79,7 +79,7 @@ public class CredentialServiceTests
             .Callback<SharedCredential, CancellationToken>((c, _) => saved = c)
             .Returns(Task.CompletedTask);
 
-        await _sut.SetHologramKeyAsync("hologram-key");
+        await _sut.SetHologramKeyAsync("hologram-key", TestContext.Current.CancellationToken);
 
         saved.ShouldNotBeNull();
         saved.TraccarApiTokenProtected.ShouldBe(existingTraccar);
@@ -93,7 +93,7 @@ public class CredentialServiceTests
         _repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync((SharedCredential?)null);
 
-        var removed = await _sut.DeleteTraccarTokenAsync();
+        var removed = await _sut.DeleteTraccarTokenAsync(TestContext.Current.CancellationToken);
 
         removed.ShouldBeFalse();
         _repository.Verify(r => r.UpsertAsync(It.IsAny<SharedCredential>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -115,7 +115,7 @@ public class CredentialServiceTests
             .Callback<SharedCredential, CancellationToken>((c, _) => saved = c)
             .Returns(Task.CompletedTask);
 
-        var removed = await _sut.DeleteHologramKeyAsync();
+        var removed = await _sut.DeleteHologramKeyAsync(TestContext.Current.CancellationToken);
 
         removed.ShouldBeTrue();
         saved.ShouldNotBeNull();
@@ -129,7 +129,7 @@ public class CredentialServiceTests
         _repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SharedCredential { TraccarApiTokenProtected = _protector.Encrypt("plaintext-token") });
 
-        var token = await _sut.GetTraccarTokenAsync();
+        var token = await _sut.GetTraccarTokenAsync(TestContext.Current.CancellationToken);
 
         token.ShouldBe("plaintext-token");
     }
@@ -140,7 +140,7 @@ public class CredentialServiceTests
         _repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SharedCredential());
 
-        var key = await _sut.GetHologramKeyAsync();
+        var key = await _sut.GetHologramKeyAsync(TestContext.Current.CancellationToken);
 
         key.ShouldBeNull();
     }
@@ -156,7 +156,7 @@ public class CredentialServiceTests
                 TraccarApiTokenProtected = otherKeyProtector.Encrypt("token-from-old-key")
             });
 
-        var token = await _sut.GetTraccarTokenAsync();
+        var token = await _sut.GetTraccarTokenAsync(TestContext.Current.CancellationToken);
 
         token.ShouldBeNull();
     }
