@@ -65,6 +65,35 @@ public class AdminServiceTests
         var result = await _sut.RemoveAllowedEmailAsync("friend@example.com", TestContext.Current.CancellationToken);
 
         result.ShouldBe(RemoveAllowedEmailResult.Removed);
+        _userRepository.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RemoveAllowedEmailAsync_AlsoDeletesTheMatchingUserAccount()
+    {
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "friend@example.com",
+            DisplayName = "Friend",
+            PasswordHash = "some-hash",
+            Role = UserRole.User,
+            IsPrimaryAdministrator = false
+        };
+        _userRepository
+            .Setup(r => r.GetByEmailAsync("friend@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _allowedEmailRepository
+            .Setup(r => r.RemoveAsync("friend@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _userRepository
+            .Setup(r => r.DeleteAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _sut.RemoveAllowedEmailAsync("friend@example.com", TestContext.Current.CancellationToken);
+
+        result.ShouldBe(RemoveAllowedEmailResult.Removed);
+        _userRepository.Verify(r => r.DeleteAsync(user.Id, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

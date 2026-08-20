@@ -18,5 +18,9 @@ public interface IUserRepository
 
     Task UpdateRoleAsync(Guid userId, UserRole role, CancellationToken cancellationToken = default);
 
+    Task UpdatePasswordHashAsync(Guid userId, string passwordHash, CancellationToken cancellationToken = default);
+
+    Task<bool> DeleteAsync(Guid userId, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default);
 }

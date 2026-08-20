@@ -5,6 +5,10 @@ import tailwindcss from '@tailwindcss/vite'
 
 const dotnetBackendDevOrigin = 'http://localhost:5120'
 const sameOriginProxiedPrefixes = ['/auth', '/api', '/public']
+const proxyPreservingClientFacingHostHeader = {
+  target: dotnetBackendDevOrigin,
+  changeOrigin: false,
+}
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -17,7 +21,7 @@ export default defineConfig({
     proxy: Object.fromEntries(
       sameOriginProxiedPrefixes.map((prefix) => [
         prefix,
-        dotnetBackendDevOrigin,
+        proxyPreservingClientFacingHostHeader,
       ]),
     ),
   },

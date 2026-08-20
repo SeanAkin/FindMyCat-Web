@@ -525,6 +525,8 @@ FodyWeavers.xsd
 ### Project-specific ###
 # SQLite databases
 *.db
+*.db-shm
+*.db-wal
 
 # ASP.NET Data Protection key rings
 keys/

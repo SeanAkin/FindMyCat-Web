@@ -1,3 +1,4 @@
+using FindMyCat.Core;
 using FindMyCat.Core.Entities;
 using FindMyCat.Core.RepositoryContracts;
 using Microsoft.EntityFrameworkCore;
@@ -8,13 +9,13 @@ internal sealed class AllowedEmailRepository(AppDbContext db) : IAllowedEmailRep
 {
     public Task<bool> IsAllowedAsync(string email, CancellationToken cancellationToken = default)
     {
-        var normalized = Normalize(email);
+        var normalized = EmailNormalizer.Normalize(email);
         return db.AllowedEmails.AnyAsync(a => a.Email == normalized, cancellationToken);
     }
 
     public async Task<AllowedEmail> AddAsync(string email, Guid addedByUserId, CancellationToken cancellationToken = default)
     {
-        var normalized = Normalize(email);
+        var normalized = EmailNormalizer.Normalize(email);
 
         var existing = await db.AllowedEmails.SingleOrDefaultAsync(a => a.Email == normalized, cancellationToken);
         if (existing is not null)
@@ -37,7 +38,7 @@ internal sealed class AllowedEmailRepository(AppDbContext db) : IAllowedEmailRep
 
     public async Task<bool> RemoveAsync(string email, CancellationToken cancellationToken = default)
     {
-        var normalized = Normalize(email);
+        var normalized = EmailNormalizer.Normalize(email);
 
         var deleted = await db.AllowedEmails
             .Where(a => a.Email == normalized)
@@ -48,6 +49,4 @@ internal sealed class AllowedEmailRepository(AppDbContext db) : IAllowedEmailRep
 
     public async Task<IReadOnlyList<AllowedEmail>> ListAsync(CancellationToken cancellationToken = default) =>
         await db.AllowedEmails.AsNoTracking().OrderBy(a => a.Email).ToListAsync(cancellationToken);
-
-    private static string Normalize(string email) => email.Trim().ToLowerInvariant();
 }

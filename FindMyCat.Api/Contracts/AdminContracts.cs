@@ -8,7 +8,7 @@ public sealed record AllowedEmailResponse(string Email, DateTimeOffset AddedAt)
     public static AllowedEmailResponse FromDomain(AllowedEmail email) => new(email.Email, email.AddedAt);
 }
 
-public sealed record AddAllowedEmailRequest([Required][EmailAddress] string Email);
+public sealed record AddAllowedEmailRequest([Required][EmailAddress][StringLength(320)] string Email);
 
 public sealed record UserResponse(
     Guid Id,

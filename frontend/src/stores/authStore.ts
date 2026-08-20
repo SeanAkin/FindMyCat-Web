@@ -10,6 +10,7 @@ interface AuthState {
   status: AuthStatus
   user: SessionResponse | null
   checkSession: () => Promise<void>
+  signIn: (user: SessionResponse) => void
   logout: () => Promise<void>
 }
 
@@ -25,6 +26,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ status: isUnauthorized ? 'unauthenticated' : 'error', user: null })
     }
   },
+  signIn: (user) => set({ status: 'authenticated', user }),
   logout: async () => {
     await logoutRequest().catch(() => {})
     set({ status: 'unauthenticated', user: null })
