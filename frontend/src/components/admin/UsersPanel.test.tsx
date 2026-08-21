@@ -51,7 +51,28 @@ const regularUser = {
 describe('UsersPanel', () => {
   afterEach(() => {
     vi.clearAllMocks()
-    useAdminStore.setState({ users: [], usersStatus: 'idle', usersError: null })
+    useAdminStore.setState({
+      users: [],
+      usersStatus: 'idle',
+      usersError: null,
+      allowedEmails: [],
+    })
+  })
+
+  it('shows a pending badge for an allow-listed email that has not joined yet', () => {
+    useAdminStore.setState({
+      usersStatus: 'success',
+      users: [regularUser],
+      allowedEmails: [
+        { email: 'member@example.com', addedAt: '2026-01-03T00:00:00.000Z' },
+        { email: 'invited@example.com', addedAt: '2026-08-10T00:00:00.000Z' },
+      ],
+    })
+    render(<UsersPanel />)
+
+    expect(screen.getByText('invited@example.com')).toBeInTheDocument()
+    expect(screen.getAllByText('Pending')).toHaveLength(1)
+    expect(screen.getByText('Household Member')).toBeInTheDocument()
   })
 
   it('disables the demote control for the primary administrator', () => {
@@ -61,9 +82,7 @@ describe('UsersPanel', () => {
     })
     render(<UsersPanel />)
 
-    expect(
-      screen.getByRole('button', { name: 'Protected' }),
-    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Protected' })).toBeDisabled()
     expect(
       screen.queryByRole('button', { name: /demote/i }),
     ).not.toBeInTheDocument()

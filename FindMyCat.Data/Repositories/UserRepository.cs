@@ -1,3 +1,4 @@
+using FindMyCat.Core;
 using FindMyCat.Core.Entities;
 using FindMyCat.Core.RepositoryContracts;
 using Microsoft.EntityFrameworkCore;
@@ -12,8 +13,11 @@ internal sealed class UserRepository(AppDbContext db) : IUserRepository
     public Task<User?> GetByGoogleSubjectIdAsync(string googleSubjectId, CancellationToken cancellationToken = default) =>
         db.Users.SingleOrDefaultAsync(u => u.GoogleSubjectId == googleSubjectId, cancellationToken);
 
-    public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
-        db.Users.SingleOrDefaultAsync(u => u.Email == email, cancellationToken);
+    public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        var normalized = EmailNormalizer.Normalize(email);
+        return db.Users.SingleOrDefaultAsync(u => u.Email == normalized, cancellationToken);
+    }
 
     public Task<bool> AnyAsync(CancellationToken cancellationToken = default) =>
         db.Users.AnyAsync(cancellationToken);
@@ -37,6 +41,22 @@ internal sealed class UserRepository(AppDbContext db) : IUserRepository
         await db.Users
             .Where(u => u.Id == userId)
             .ExecuteUpdateAsync(setters => setters.SetProperty(u => u.Role, role), cancellationToken);
+    }
+
+    public async Task UpdatePasswordHashAsync(Guid userId, string passwordHash, CancellationToken cancellationToken = default)
+    {
+        await db.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(u => u.PasswordHash, passwordHash), cancellationToken);
+    }
+
+    public async Task<bool> DeleteAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var deleted = await db.Users
+            .Where(u => u.Id == userId)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        return deleted > 0;
     }
 
     public async Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default)

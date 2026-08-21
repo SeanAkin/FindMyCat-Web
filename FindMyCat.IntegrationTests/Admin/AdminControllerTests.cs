@@ -82,6 +82,26 @@ public sealed class AdminControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Removing_an_allowed_email_also_deletes_the_matching_users_account()
+    {
+        var admin = await CreateUserAsync(UserRole.Administrator, cancellationToken: TestContext.Current.CancellationToken);
+        using var client = CreateAuthenticatedClient(admin);
+        var member = await CreateUserAsync(UserRole.User, email: "friend@example.com", cancellationToken: TestContext.Current.CancellationToken);
+        await client.PostAsJsonAsync(
+            "/api/admin/allowed-emails",
+            new AddAllowedEmailRequest(member.Email),
+            TestContext.Current.CancellationToken);
+
+        var deleteResponse = await client.DeleteAsync(
+            $"/api/admin/allowed-emails/{member.Email}", TestContext.Current.CancellationToken);
+        deleteResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        var users = await client.GetFromJsonAsync<List<UserResponse>>(
+            "/api/admin/users", JsonOptionsMatchingServerEnumSerialization, TestContext.Current.CancellationToken) ?? [];
+        users.ShouldNotContain(u => u.Id == member.Id);
+    }
+
+    [Fact]
     public async Task Administrator_cannot_remove_the_primary_administrators_allowed_email()
     {
         var primaryAdmin = await CreateUserAsync(

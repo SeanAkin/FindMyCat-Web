@@ -66,3 +66,8 @@ export type ApiErrorCode =
   | 'hologram_credential_rejected'
   | 'hologram_unavailable'
   | 'primary_administrator_protected'
+  | 'not_allow_listed'
+  | 'email_already_registered'
+  | 'weak_password'
+  | 'invalid_credentials'
+  | 'email_registered_with_password'

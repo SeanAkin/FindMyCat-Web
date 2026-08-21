@@ -6,3 +6,18 @@ export const getSession = (signal?: AbortSignal) =>
 
 export const logout = (signal?: AbortSignal) =>
   api.post<void>('/auth/logout', undefined, signal)
+
+export const register = (
+  email: string,
+  password: string,
+  displayName: string,
+  signal?: AbortSignal,
+) =>
+  api.post<SessionResponse>(
+    '/auth/register',
+    { email, password, displayName },
+    signal,
+  )
+
+export const login = (email: string, password: string, signal?: AbortSignal) =>
+  api.post<SessionResponse>('/auth/login', { email, password }, signal)

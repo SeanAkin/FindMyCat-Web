@@ -5,6 +5,17 @@ import { addAllowedEmail, removeAllowedEmail } from '@/api/admin'
 import { toApiError } from '@/api/http'
 import { AsyncSection } from '@/components/AsyncSection'
 import { ErrorAlert } from '@/components/ErrorAlert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -17,6 +28,10 @@ export function AllowedEmailsPanel() {
   const status = useAdminStore((state) => state.allowedEmailsStatus)
   const error = useAdminStore((state) => state.allowedEmailsError)
   const fetchAllowedEmails = useAdminStore((state) => state.fetchAllowedEmails)
+  const fetchUsers = useAdminStore((state) => state.fetchUsers)
+  const users = useAdminStore((state) => state.users)
+
+  const joinedEmails = new Set(users.map((user) => user.email.toLowerCase()))
 
   const [emailInput, setEmailInput] = useState('')
   const [isAdding, setIsAdding] = useState(false)
@@ -46,7 +61,7 @@ export function AllowedEmailsPanel() {
     try {
       await removeAllowedEmail(email)
       toast.success(`${email} removed from the allow-list.`)
-      await fetchAllowedEmails()
+      await Promise.all([fetchAllowedEmails(), fetchUsers()])
     } catch (err) {
       const { title, description } = getAdminErrorMessage(toApiError(err))
       toast.error(title, { description })
@@ -103,23 +118,51 @@ export function AllowedEmailsPanel() {
             </p>
           ) : (
             <ul className="flex flex-col divide-y divide-border text-sm">
-              {allowedEmails.map((entry) => (
-                <li
-                  key={entry.email}
-                  className="flex items-center justify-between gap-4 py-2"
-                >
-                  <span>{entry.email}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Remove ${entry.email}`}
-                    disabled={removingEmail === entry.email}
-                    onClick={() => void handleRemove(entry.email)}
+              {allowedEmails.map((entry) => {
+                const hasJoined = joinedEmails.has(entry.email.toLowerCase())
+                return (
+                  <li
+                    key={entry.email}
+                    className="flex items-center justify-between gap-4 py-2"
                   >
-                    <Trash2 />
-                  </Button>
-                </li>
-              ))}
+                    <span>{entry.email}</span>
+                    <AlertDialog>
+                      <AlertDialogTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Remove ${entry.email}`}
+                            disabled={removingEmail === entry.email}
+                          >
+                            <Trash2 />
+                          </Button>
+                        }
+                      />
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            Remove {entry.email}?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {hasJoined
+                              ? "They'll lose access immediately and their account will be deleted, including their sign-in details."
+                              : "They won't be able to join until they're added back to the allow-list."}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => void handleRemove(entry.email)}
+                          >
+                            Remove
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </li>
+                )
+              })}
             </ul>
           )}
         </AsyncSection>

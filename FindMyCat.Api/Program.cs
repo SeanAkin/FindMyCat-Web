@@ -1,14 +1,23 @@
+using System.Net;
+using System.Security.Authentication;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
+using FindMyCat.Api.Auth;
+using FindMyCat.Api.Contracts;
 using FindMyCat.Core;
+using FindMyCat.Core.RepositoryContracts;
 using FindMyCat.Core.Services;
 using FindMyCat.Core.Services.Hologram;
 using FindMyCat.Core.Services.Traccar;
 using FindMyCat.Data;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -83,6 +92,32 @@ builder.Services.AddAuthentication(options =>
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             return Task.CompletedTask;
         };
+
+        options.Events.OnValidatePrincipal = async context =>
+        {
+            var userId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userId, out var parsedUserId))
+            {
+                context.RejectPrincipal();
+                await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                return;
+            }
+
+            var userRepository = context.HttpContext.RequestServices.GetRequiredService<IUserRepository>();
+            var user = await userRepository.GetByIdAsync(parsedUserId, context.HttpContext.RequestAborted);
+            if (user is null)
+            {
+                context.RejectPrincipal();
+                await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                return;
+            }
+
+            if (!AuthClaimsFactory.MatchesUser(context.Principal!, user))
+            {
+                context.ReplacePrincipal(AuthClaimsFactory.CreatePrincipal(user));
+                context.ShouldRenew = true;
+            }
+        };
     })
     .AddGoogle(options =>
     {
@@ -91,6 +126,9 @@ builder.Services.AddAuthentication(options =>
         options.CallbackPath = "/auth/callback";
         options.SaveTokens = false;
 
+        // context.Fail is silently ignored by OAuthHandler.CreateTicketAsync; throwing is the
+        // only way to abort ticket creation - protects the fix for the auth bypass from being
+        // refactored away.
         options.Events.OnCreatingTicket = async context =>
         {
             var googleSubjectId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -99,8 +137,7 @@ builder.Services.AddAuthentication(options =>
 
             if (string.IsNullOrWhiteSpace(googleSubjectId) || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(displayName))
             {
-                context.Fail("Google did not return the expected profile information.");
-                return;
+                throw new AuthenticationException("Google did not return the expected profile information.");
             }
 
             var provisioningService = context.HttpContext.RequestServices.GetRequiredService<IUserProvisioningService>();
@@ -110,23 +147,11 @@ builder.Services.AddAuthentication(options =>
 
             if (!result.IsSuccess)
             {
-                context.HttpContext.Items[SignInDenialCodeItemsKey] = "access_denied";
-                context.Fail(result.DenialReason ?? "Access denied.");
-                return;
+                context.HttpContext.Items[SignInDenialCodeItemsKey] = result.DenialCode ?? "access_denied";
+                throw new AuthenticationException(result.DenialReason ?? "Access denied.");
             }
 
-            // Replace Google's claim set with a minimal one describing our own local user,
-            // since that's what ends up persisted in the app's cookie session.
-            var user = result.User!;
-            var claims = new List<Claim>
-            {
-                new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new(ClaimTypes.Email, user.Email),
-                new(ClaimTypes.Name, user.DisplayName),
-                new(ClaimTypes.Role, user.Role.ToString())
-            };
-
-            context.Principal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
+            context.Principal = AuthClaimsFactory.CreatePrincipal(result.User!);
         };
 
         options.Events.OnRemoteFailure = context =>
@@ -146,6 +171,32 @@ builder.Services.AddAuthorization(options =>
         .Build();
 });
 
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    TrustAnyUnroutablePrivateNetworkAsReverseProxy(options.KnownIPNetworks);
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy("auth", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            Window = TimeSpan.FromMinutes(1),
+            PermitLimit = 10,
+            QueueLimit = 0
+        }));
+
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new AuthErrorResponse("too_many_requests", "Too many attempts. Please wait a moment and try again."),
+            cancellationToken);
+    };
+});
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -161,14 +212,29 @@ if (!app.Environment.IsEnvironment("Testing"))
     db.Database.Migrate();
 }
 
+app.UseForwardedHeaders();
+
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
+var hasRealClientIpAddresses = !app.Environment.IsEnvironment("Testing");
+if (hasRealClientIpAddresses)
+{
+    app.UseRateLimiter();
+}
+
 app.MapControllers();
 
 app.Run();
+
+static void TrustAnyUnroutablePrivateNetworkAsReverseProxy(IList<System.Net.IPNetwork> knownNetworks)
+{
+    knownNetworks.Add(new System.Net.IPNetwork(IPAddress.Parse("10.0.0.0"), 8));
+    knownNetworks.Add(new System.Net.IPNetwork(IPAddress.Parse("172.16.0.0"), 12));
+    knownNetworks.Add(new System.Net.IPNetwork(IPAddress.Parse("192.168.0.0"), 16));
+}
 
 // This is needed for WebApplicationFactory so IntegrationTests can se our entry point (https://learn.microsoft.com/en-us/aspnet/core/test/integration-tests?view=aspnetcore-10.0&pivots=xunit)
 public partial class Program { }

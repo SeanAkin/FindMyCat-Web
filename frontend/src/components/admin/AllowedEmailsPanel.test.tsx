@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from 'sonner'
 import { AllowedEmailsPanel } from '@/components/admin/AllowedEmailsPanel'
@@ -26,6 +26,7 @@ describe('AllowedEmailsPanel', () => {
       allowedEmails: [],
       allowedEmailsStatus: 'idle',
       allowedEmailsError: null,
+      users: [],
     })
   })
 
@@ -71,15 +72,17 @@ describe('AllowedEmailsPanel', () => {
     expect(screen.getByPlaceholderText('name@example.com')).toHaveValue('')
   })
 
-  it('removes an email and refreshes the list', async () => {
+  it('requires confirmation before removing an email, then refreshes both the allow-list and the users table', async () => {
     vi.mocked(removeAllowedEmail).mockResolvedValue(undefined)
     const fetchAllowedEmails = vi.fn()
+    const fetchUsers = vi.fn()
     useAdminStore.setState({
       allowedEmailsStatus: 'success',
       allowedEmails: [
         { email: 'gone@example.com', addedAt: '2026-08-01T00:00:00.000Z' },
       ],
       fetchAllowedEmails,
+      fetchUsers,
     })
     const user = userEvent.setup()
     render(<AllowedEmailsPanel />)
@@ -87,14 +90,69 @@ describe('AllowedEmailsPanel', () => {
     await user.click(
       screen.getByRole('button', { name: 'Remove gone@example.com' }),
     )
+    expect(removeAllowedEmail).not.toHaveBeenCalled()
+
+    const dialog = await screen.findByRole('alertdialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Remove' }))
 
     await waitFor(() =>
       expect(removeAllowedEmail).toHaveBeenCalledWith('gone@example.com'),
     )
     expect(fetchAllowedEmails).toHaveBeenCalled()
+    expect(fetchUsers).toHaveBeenCalled()
     expect(toast.success).toHaveBeenCalledWith(
       'gone@example.com removed from the allow-list.',
     )
+  })
+
+  it('cancelling the removal dialog does not call removeAllowedEmail', async () => {
+    useAdminStore.setState({
+      allowedEmailsStatus: 'success',
+      allowedEmails: [
+        { email: 'gone@example.com', addedAt: '2026-08-01T00:00:00.000Z' },
+      ],
+    })
+    const user = userEvent.setup()
+    render(<AllowedEmailsPanel />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'Remove gone@example.com' }),
+    )
+    const dialog = await screen.findByRole('alertdialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+
+    expect(removeAllowedEmail).not.toHaveBeenCalled()
+  })
+
+  it('warns that removal deletes the account when the invite has already been joined', async () => {
+    useAdminStore.setState({
+      allowedEmailsStatus: 'success',
+      allowedEmails: [
+        { email: 'joined@example.com', addedAt: '2026-08-01T00:00:00.000Z' },
+      ],
+      users: [
+        {
+          id: 'user-1',
+          email: 'joined@example.com',
+          displayName: 'Joined Person',
+          role: 'User',
+          isPrimaryAdministrator: false,
+          createdAt: '2026-08-01T00:00:00.000Z',
+          lastLoginAt: '2026-08-01T00:00:00.000Z',
+        },
+      ],
+    })
+    const user = userEvent.setup()
+    render(<AllowedEmailsPanel />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'Remove joined@example.com' }),
+    )
+
+    const dialog = await screen.findByRole('alertdialog')
+    expect(
+      within(dialog).getByText(/their account will be deleted/i),
+    ).toBeInTheDocument()
   })
 
   it('shows a mapped error toast when removal is blocked for the primary administrator', async () => {
@@ -117,15 +175,14 @@ describe('AllowedEmailsPanel', () => {
     await user.click(
       screen.getByRole('button', { name: 'Remove founder@example.com' }),
     )
+    const dialog = await screen.findByRole('alertdialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Remove' }))
 
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith(
-        'That account is protected',
-        {
-          description:
-            "The original administrator account's email cannot be removed from the allow-list.",
-        },
-      ),
+      expect(toast.error).toHaveBeenCalledWith('That account is protected', {
+        description:
+          "The original administrator account's email cannot be removed from the allow-list.",
+      }),
     )
   })
 })

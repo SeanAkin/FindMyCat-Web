@@ -29,8 +29,14 @@ export function UsersPanel() {
   const status = useAdminStore((state) => state.usersStatus)
   const error = useAdminStore((state) => state.usersError)
   const fetchUsers = useAdminStore((state) => state.fetchUsers)
+  const allowedEmails = useAdminStore((state) => state.allowedEmails)
 
   const [pendingUserId, setPendingUserId] = useState<string | null>(null)
+
+  const joinedEmails = new Set(users.map((user) => user.email.toLowerCase()))
+  const pendingInvites = allowedEmails.filter(
+    (entry) => !joinedEmails.has(entry.email.toLowerCase()),
+  )
 
   const changeRole = async (
     userId: string,
@@ -75,10 +81,19 @@ export function UsersPanel() {
             )
           }
         >
-          {users.length === 0 ? (
+          {users.length === 0 && pendingInvites.length === 0 ? (
             <p className="text-sm text-muted-foreground">No users yet.</p>
           ) : (
             <ul className="flex flex-col divide-y divide-border text-sm">
+              {pendingInvites.map((invite) => (
+                <li
+                  key={invite.email}
+                  className="flex flex-wrap items-center justify-between gap-3 py-3"
+                >
+                  <span className="text-muted-foreground">{invite.email}</span>
+                  <Badge variant="outline">Pending</Badge>
+                </li>
+              ))}
               {users.map((user) => (
                 <li
                   key={user.id}

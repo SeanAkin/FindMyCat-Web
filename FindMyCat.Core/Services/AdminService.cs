@@ -32,8 +32,10 @@ public sealed class AdminService(IAllowedEmailRepository allowedEmailRepository,
             return RemoveAllowedEmailResult.PrimaryAdministratorProtected;
         }
 
-        var removed = await allowedEmailRepository.RemoveAsync(email, cancellationToken);
-        return removed ? RemoveAllowedEmailResult.Removed : RemoveAllowedEmailResult.NotFound;
+        var removedPendingInvite = await allowedEmailRepository.RemoveAsync(email, cancellationToken);
+        var removedActiveAccount = user is not null && await userRepository.DeleteAsync(user.Id, cancellationToken);
+
+        return removedPendingInvite || removedActiveAccount ? RemoveAllowedEmailResult.Removed : RemoveAllowedEmailResult.NotFound;
     }
 
     public Task<IReadOnlyList<User>> ListUsersAsync(CancellationToken cancellationToken = default) =>
