@@ -49,7 +49,7 @@ public sealed class AuthControllerTests : IntegrationTestBase
         using var client = CreateClient();
 
         var providers = await client.GetFromJsonAsync<AuthProvidersResponse>(
-            "/auth/providers", TestContext.Current.CancellationToken);
+            "/auth/providers", JsonOptions, TestContext.Current.CancellationToken);
 
         providers!.Providers.ShouldBe([AuthProvider.Password, AuthProvider.Google]);
     }

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using FindMyCat.Api.Contracts;
+using FindMyCat.Api.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -23,7 +24,7 @@ public sealed class GoogleAuthDisabledTests : IClassFixture<GoogleAuthDisabledTe
         using var client = _factory.CreateClient();
 
         var providers = await client.GetFromJsonAsync<AuthProvidersResponse>(
-            "/auth/providers", TestContext.Current.CancellationToken);
+            "/auth/providers", ApiJsonOptions.Default, TestContext.Current.CancellationToken);
 
         providers!.Providers.ShouldBe([AuthProvider.Password]);
     }

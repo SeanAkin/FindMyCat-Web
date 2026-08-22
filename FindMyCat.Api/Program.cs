@@ -1,10 +1,10 @@
 using System.Net;
 using System.Security.Authentication;
 using System.Security.Claims;
-using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using FindMyCat.Api.Auth;
 using FindMyCat.Api.Contracts;
+using FindMyCat.Api.Json;
 using FindMyCat.Core;
 using FindMyCat.Core.RepositoryContracts;
 using FindMyCat.Core.Services;
@@ -13,17 +13,15 @@ using FindMyCat.Core.Services.Traccar;
 using FindMyCat.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.Google;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers()
-    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+    .AddJsonOptions(options => ApiJsonOptions.Configure(options.JsonSerializerOptions));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
