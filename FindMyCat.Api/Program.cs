@@ -1,10 +1,10 @@
 using System.Net;
 using System.Security.Authentication;
 using System.Security.Claims;
-using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using FindMyCat.Api.Auth;
 using FindMyCat.Api.Contracts;
+using FindMyCat.Api.Json;
 using FindMyCat.Core;
 using FindMyCat.Core.RepositoryContracts;
 using FindMyCat.Core.Services;
@@ -13,17 +13,15 @@ using FindMyCat.Core.Services.Traccar;
 using FindMyCat.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.Google;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers()
-    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+    .AddJsonOptions(options => ApiJsonOptions.Configure(options.JsonSerializerOptions));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -66,7 +64,10 @@ builder.Services.AddDataProtection().SetApplicationName("FindMyCat");
 
 const string SignInDenialCodeItemsKey = "FindMyCat.SignInDenialCode";
 
-builder.Services.AddAuthentication(options =>
+var googleAuthEnabled = builder.Configuration.GetValue("Authentication:Google:Enabled", true);
+builder.Services.AddSingleton(new GoogleAuthSettings(googleAuthEnabled));
+
+var authenticationBuilder = builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -118,8 +119,11 @@ builder.Services.AddAuthentication(options =>
                 context.ShouldRenew = true;
             }
         };
-    })
-    .AddGoogle(options =>
+    });
+
+if (googleAuthEnabled)
+{
+    authenticationBuilder.AddGoogle(options =>
     {
         options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? string.Empty;
         options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? string.Empty;
@@ -162,6 +166,7 @@ builder.Services.AddAuthentication(options =>
             return Task.CompletedTask;
         };
     });
+}
 
 builder.Services.AddAuthorization(options =>
 {

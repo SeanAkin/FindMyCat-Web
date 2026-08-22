@@ -30,3 +30,11 @@ public sealed record LoginRequest(
     [Required][StringLength(PasswordPolicy.MaximumLength)] string Password);
 
 public sealed record AuthErrorResponse(string Code, string Message);
+
+public enum AuthProvider
+{
+    Password = 0,
+    Google = 1
+}
+
+public sealed record AuthProvidersResponse(IReadOnlyList<AuthProvider> Providers);

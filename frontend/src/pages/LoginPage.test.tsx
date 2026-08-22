@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/authStore'
 
 vi.mock('@/api/auth', () => ({
   getSession: vi.fn(),
+  getAuthProviders: vi.fn(),
   logout: vi.fn(),
   login: vi.fn(),
   register: vi.fn(),
@@ -28,7 +29,7 @@ function renderLoginPage(path: string) {
 describe('LoginPage', () => {
   afterEach(() => {
     vi.clearAllMocks()
-    useAuthStore.setState({ status: 'loading', user: null })
+    useAuthStore.setState({ status: 'loading', user: null, providers: ['Password', 'Google'] })
   })
 
   it('shows the sign-in button by default', () => {
@@ -38,6 +39,19 @@ describe('LoginPage', () => {
     expect(
       screen.getByRole('button', { name: 'Sign in with Google' }),
     ).toHaveAttribute('href', '/auth/login')
+  })
+
+  it('hides the Google sign-in button when Google auth is disabled', () => {
+    useAuthStore.setState({
+      status: 'unauthenticated',
+      user: null,
+      providers: ['Password'],
+    })
+    renderLoginPage('/login')
+
+    expect(
+      screen.queryByRole('button', { name: 'Sign in with Google' }),
+    ).not.toBeInTheDocument()
   })
 
   it('shows the access-denied screen for a not-allow-listed email', () => {

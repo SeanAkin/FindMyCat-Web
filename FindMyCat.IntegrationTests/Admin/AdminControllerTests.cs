@@ -97,7 +97,7 @@ public sealed class AdminControllerTests : IntegrationTestBase
         deleteResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         var users = await client.GetFromJsonAsync<List<UserResponse>>(
-            "/api/admin/users", JsonOptionsMatchingServerEnumSerialization, TestContext.Current.CancellationToken) ?? [];
+            "/api/admin/users", JsonOptions, TestContext.Current.CancellationToken) ?? [];
         users.ShouldNotContain(u => u.Id == member.Id);
     }
 
@@ -143,7 +143,7 @@ public sealed class AdminControllerTests : IntegrationTestBase
         using var client = CreateAuthenticatedClient(admin);
 
         var users = await client.GetFromJsonAsync<List<UserResponse>>(
-            "/api/admin/users", JsonOptionsMatchingServerEnumSerialization, TestContext.Current.CancellationToken) ?? [];
+            "/api/admin/users", JsonOptions, TestContext.Current.CancellationToken) ?? [];
 
         users.ShouldContain(u => u.Email == "admin@example.com" && u.Role == UserRole.Administrator);
         users.ShouldContain(u => u.Email == "member@example.com" && u.Role == UserRole.User);
@@ -163,7 +163,7 @@ public sealed class AdminControllerTests : IntegrationTestBase
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         var users = await client.GetFromJsonAsync<List<UserResponse>>(
-            "/api/admin/users", JsonOptionsMatchingServerEnumSerialization, TestContext.Current.CancellationToken) ?? [];
+            "/api/admin/users", JsonOptions, TestContext.Current.CancellationToken) ?? [];
         users.ShouldContain(u => u.Id == partner.Id && u.Role == UserRole.Administrator);
     }
 

@@ -5,6 +5,12 @@ export interface SessionResponse {
   role: UserRole
 }
 
+export type AuthProviderName = 'Password' | 'Google'
+
+export interface AuthProvidersResponse {
+  providers: AuthProviderName[]
+}
+
 export interface PositionResponse {
   deviceId: number
   fixTime: string

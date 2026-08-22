@@ -1,5 +1,5 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using FindMyCat.Api.Json;
 using FindMyCat.Core.Entities;
 using FindMyCat.Data;
 using FindMyCat.IntegrationTests.Stubs;
@@ -13,10 +13,7 @@ public abstract class IntegrationTestBase : IClassFixture<FindMyCatApiFactory>, 
 
     internal static ITestOutputHelper? CurrentOutput => OutputHolder.Value;
 
-    protected static readonly JsonSerializerOptions JsonOptionsMatchingServerEnumSerialization = new(JsonSerializerDefaults.Web)
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
+    protected static readonly JsonSerializerOptions JsonOptions = ApiJsonOptions.Default;
 
     protected readonly FindMyCatApiFactory Factory;
     protected readonly HttpClient Client;

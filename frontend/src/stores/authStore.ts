@@ -1,15 +1,19 @@
 import { create } from 'zustand'
-import { getSession, logout as logoutRequest } from '@/api/auth'
+import { getAuthProviders, getSession, logout as logoutRequest } from '@/api/auth'
 import { ApiError, onUnauthorized } from '@/api/http'
-import type { SessionResponse } from '@/api/types'
+import type { AuthProviderName, SessionResponse } from '@/api/types'
 
 export type AuthStatus =
   'loading' | 'authenticated' | 'unauthenticated' | 'error'
 
+const DEFAULT_PROVIDERS: AuthProviderName[] = ['Password', 'Google']
+
 interface AuthState {
   status: AuthStatus
   user: SessionResponse | null
+  providers: AuthProviderName[]
   checkSession: () => Promise<void>
+  loadAuthProviders: () => Promise<void>
   signIn: (user: SessionResponse) => void
   logout: () => Promise<void>
 }
@@ -17,6 +21,7 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   status: 'loading',
   user: null,
+  providers: DEFAULT_PROVIDERS,
   checkSession: async () => {
     try {
       const user = await getSession()
@@ -25,6 +30,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       const isUnauthorized = error instanceof ApiError && error.isUnauthorized
       set({ status: isUnauthorized ? 'unauthenticated' : 'error', user: null })
     }
+  },
+  loadAuthProviders: async () => {
+    const { providers } = await getAuthProviders().catch(() => ({ providers: DEFAULT_PROVIDERS }))
+    set({ providers })
   },
   signIn: (user) => set({ status: 'authenticated', user }),
   logout: async () => {

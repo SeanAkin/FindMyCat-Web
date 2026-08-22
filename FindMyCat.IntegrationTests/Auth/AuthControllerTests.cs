@@ -42,4 +42,15 @@ public sealed class AuthControllerTests : IntegrationTestBase
 
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
+
+    [Fact]
+    public async Task Providers_lists_password_and_google_by_default()
+    {
+        using var client = CreateClient();
+
+        var providers = await client.GetFromJsonAsync<AuthProvidersResponse>(
+            "/auth/providers", JsonOptions, TestContext.Current.CancellationToken);
+
+        providers!.Providers.ShouldBe([AuthProvider.Password, AuthProvider.Google]);
+    }
 }
