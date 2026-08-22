@@ -53,11 +53,3 @@ jobs:
 
       - name: Trigger Dokploy deployment
         run: curl -s -X POST "${{ secrets.DOKPLOY_WEBHOOK }}"
-
-      - name: Clean up old GHCR images
-        uses: dataaxiom/ghcr-cleanup-action@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          package: findmycat-web
-          keep-n-tagged: 5
-          delete-untagged: true
