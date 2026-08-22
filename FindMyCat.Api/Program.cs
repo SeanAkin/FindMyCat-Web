@@ -216,6 +216,9 @@ app.UseForwardedHeaders();
 
 app.UseHttpsRedirection();
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -226,6 +229,8 @@ if (hasRealClientIpAddresses)
 }
 
 app.MapControllers();
+
+app.MapFallbackToFile("index.html").AllowAnonymous();
 
 app.Run();
 

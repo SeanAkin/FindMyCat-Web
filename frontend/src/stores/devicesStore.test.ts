@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { DeviceResponse } from '@/api/types'
 
 function jsonResponse(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -15,7 +16,7 @@ const device = {
   lastUpdate: '2026-08-16T11:00:00.000Z',
   disabled: false,
   position: null,
-}
+} satisfies DeviceResponse
 
 describe('devicesStore', () => {
   beforeEach(() => {

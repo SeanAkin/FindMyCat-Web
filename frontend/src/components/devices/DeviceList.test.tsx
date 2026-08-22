@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { DeviceList } from '@/components/devices/DeviceList'
 import { ApiError } from '@/api/http'
 import { useDevicesStore } from '@/stores/devicesStore'
+import type { DeviceResponse } from '@/api/types'
 
 const device = {
   id: 1,
@@ -27,7 +28,7 @@ const device = {
     batteryLevel: 80,
     satellites: 8,
   },
-}
+} satisfies DeviceResponse
 
 describe('DeviceList', () => {
   afterEach(() => {

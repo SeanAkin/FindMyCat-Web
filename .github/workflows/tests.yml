@@ -1,0 +1,64 @@
+name: Tests
+
+on:
+  workflow_call:
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore FindMyCat.slnx
+
+      - name: Build
+        run: dotnet build FindMyCat.slnx --no-restore --configuration Release
+
+      - name: Run tests
+        run: dotnet test FindMyCat.slnx --no-build --configuration Release
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+      - name: Run e2e tests
+        uses: cypress-io/github-action@v7
+        with:
+          working-directory: frontend
+          start: npm run dev
+          wait-on: 'http://localhost:5173'
