@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/node_modules/
+frontend/dist/
+frontend/cypress/screenshots/
+.git/
+.idea/
+.vs/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+FindMyCat.Api/keys/

@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { DeviceDetailPanel } from '@/components/devices/DeviceDetailPanel'
 import { useDevicesStore } from '@/stores/devicesStore'
+import type { DeviceResponse } from '@/api/types'
 
 function renderDeviceDetailPanel() {
   return render(
@@ -34,7 +35,7 @@ const deviceWithPosition = {
     batteryLevel: 80,
     satellites: 8,
   },
-}
+} satisfies DeviceResponse
 
 const deviceWithoutPosition = {
   ...deviceWithPosition,
