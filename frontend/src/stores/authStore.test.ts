@@ -67,6 +67,25 @@ describe('authStore', () => {
     expect(useAuthStore.getState().user).toBeNull()
   })
 
+  it('loadAuthProviders stores the provider list from the backend', async () => {
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(200, { providers: ['Password'] }))
+    const { useAuthStore } = await import('./authStore')
+
+    await useAuthStore.getState().loadAuthProviders()
+
+    expect(useAuthStore.getState().providers).toEqual(['Password'])
+  })
+
+  it('loadAuthProviders defaults to all known providers when the request fails', async () => {
+    vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'))
+    const { useAuthStore } = await import('./authStore')
+    useAuthStore.setState({ providers: ['Password'] })
+
+    await useAuthStore.getState().loadAuthProviders()
+
+    expect(useAuthStore.getState().providers).toEqual(['Password', 'Google'])
+  })
+
   it('a 401 from any api call flips the store to unauthenticated', async () => {
     const { useAuthStore } = await import('./authStore')
     const { api } = await import('@/api/http')

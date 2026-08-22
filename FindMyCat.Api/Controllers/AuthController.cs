@@ -13,12 +13,30 @@ namespace FindMyCat.Api.Controllers;
 
 [ApiController]
 [Route("auth")]
-public class AuthController(IUserProvisioningService userProvisioningService) : ControllerBase
+public class AuthController(IUserProvisioningService userProvisioningService, GoogleAuthSettings googleAuthSettings) : ControllerBase
 {
+    [HttpGet("providers")]
+    [AllowAnonymous]
+    public ActionResult<AuthProvidersResponse> Providers()
+    {
+        var providers = new List<AuthProvider> { AuthProvider.Password };
+        if (googleAuthSettings.Enabled)
+        {
+            providers.Add(AuthProvider.Google);
+        }
+
+        return Ok(new AuthProvidersResponse(providers));
+    }
+
     [HttpGet("login")]
     [AllowAnonymous]
     public IActionResult Login([FromQuery] string? returnUrl = null)
     {
+        if (!googleAuthSettings.Enabled)
+        {
+            return NotFound();
+        }
+
         var redirectUri = "/";
         if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
         {

@@ -14,6 +14,7 @@ type Mode = 'signin' | 'register'
 export function LoginPage() {
   const status = useAuthStore((state) => state.status)
   const signIn = useAuthStore((state) => state.signIn)
+  const googleEnabled = useAuthStore((state) => state.providers.includes('Google'))
   const [searchParams] = useSearchParams()
   const redirectError = searchParams.get('error')
 
@@ -158,15 +159,19 @@ export function LoginPage() {
           : 'Already have an account? Sign in'}
       </button>
 
-      <div className="flex w-full max-w-sm items-center gap-2 text-xs text-muted-foreground">
-        <span className="h-px flex-1 bg-border" />
-        or
-        <span className="h-px flex-1 bg-border" />
-      </div>
+      {googleEnabled && (
+        <>
+          <div className="flex w-full max-w-sm items-center gap-2 text-xs text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            or
+            <span className="h-px flex-1 bg-border" />
+          </div>
 
-      <Button nativeButton={false} render={<a href="/auth/login" />}>
-        Sign in with Google
-      </Button>
+          <Button nativeButton={false} render={<a href="/auth/login" />}>
+            Sign in with Google
+          </Button>
+        </>
+      )}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import App from './App.tsx'
 import { useAuthStore } from '@/stores/authStore'
 
 void useAuthStore.getState().checkSession()
+void useAuthStore.getState().loadAuthProviders()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

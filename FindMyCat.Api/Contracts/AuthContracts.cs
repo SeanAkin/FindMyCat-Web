@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 using FindMyCat.Core.Entities;
 using FindMyCat.Core.Services;
 
@@ -30,3 +31,12 @@ public sealed record LoginRequest(
     [Required][StringLength(PasswordPolicy.MaximumLength)] string Password);
 
 public sealed record AuthErrorResponse(string Code, string Message);
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum AuthProvider
+{
+    Password = 0,
+    Google = 1
+}
+
+public sealed record AuthProvidersResponse(IReadOnlyList<AuthProvider> Providers);

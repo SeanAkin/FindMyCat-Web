@@ -66,7 +66,10 @@ builder.Services.AddDataProtection().SetApplicationName("FindMyCat");
 
 const string SignInDenialCodeItemsKey = "FindMyCat.SignInDenialCode";
 
-builder.Services.AddAuthentication(options =>
+var googleAuthEnabled = builder.Configuration.GetValue("Authentication:Google:Enabled", true);
+builder.Services.AddSingleton(new GoogleAuthSettings(googleAuthEnabled));
+
+var authenticationBuilder = builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -118,8 +121,11 @@ builder.Services.AddAuthentication(options =>
                 context.ShouldRenew = true;
             }
         };
-    })
-    .AddGoogle(options =>
+    });
+
+if (googleAuthEnabled)
+{
+    authenticationBuilder.AddGoogle(options =>
     {
         options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? string.Empty;
         options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? string.Empty;
@@ -162,6 +168,7 @@ builder.Services.AddAuthentication(options =>
             return Task.CompletedTask;
         };
     });
+}
 
 builder.Services.AddAuthorization(options =>
 {
