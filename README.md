@@ -100,6 +100,9 @@ docker run -d \
   -e FINDMYCAT_ENCRYPTION_KEY="..." \
   -e Traccar__BaseUrl="https://your-traccar-instance.example.com" \
   -e ConnectionStrings__Default="Data Source=/data/findmycat.db" \
+  -e Authentication__Google__Enabled="true" \
+  -e Authentication__Google__ClientId="your-client-id.apps.googleusercontent.com" \
+  -e Authentication__Google__ClientSecret="your-client-secret" \
   -v findmycat-data:/data \
   findmycat
 ```
