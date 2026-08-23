@@ -129,6 +129,9 @@ services:
       FINDMYCAT_ENCRYPTION_KEY: "..."
       Traccar__BaseUrl: "https://your-traccar-instance.example.com"
       ConnectionStrings__Default: "Data Source=/data/findmycat.db"
+      Authentication__Google__Enabled=true
+      Authentication__Google__ClientId=your-client-id.apps.googleusercontent.com
+      Authentication__Google__ClientSecret=your-client-secret
     volumes:
       - findmycat-data:/data
 
