@@ -1,10 +1,12 @@
 ﻿using System.Net;
 using System.Security.Authentication;
 using System.Security.Claims;
+using System.Text.Json;
 using System.Threading.RateLimiting;
 using FindMyCat.Api.Auth;
 using FindMyCat.Api.Errors;
 using FindMyCat.Api.Json;
+using FindMyCat.Api.Validation;
 using FindMyCat.Core;
 using FindMyCat.Core.Entities;
 using FindMyCat.Core.Errors;
@@ -15,28 +17,27 @@ using FindMyCat.Core.RepositoryContracts;
 using FindMyCat.Core.Security;
 using FindMyCat.Core.Services;
 using FindMyCat.Data;
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers()
+ValidatorOptions.Global.PropertyNameResolver = (_, member, _) =>
+    member is null ? null : JsonNamingPolicy.CamelCase.ConvertName(member.Name);
+
+builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
+
+builder.Services.AddControllers(options => options.Filters.Add<RequestValidationFilter>())
     .AddJsonOptions(options => ApiJsonOptions.Configure(options.JsonSerializerOptions));
 
-// Suppresses the ValidationProblemDetails that [ApiController] returns by default, while keeping
-// the per-field breakdown it carried.
-builder.Services.AddSingleton<ValidationErrorFactory>();
 builder.Services.Configure<ApiBehaviorOptions>(options =>
-    options.InvalidModelStateResponseFactory = context => new BadRequestObjectResult(
-        context.HttpContext.RequestServices
-            .GetRequiredService<ValidationErrorFactory>()
-            .FromModelState(context.ModelState)));
+    options.InvalidModelStateResponseFactory = DescribeBodyThatCouldNotBeBound);
 
 builder.Services.AddExceptionHandler<FindMyCatExceptionHandler>();
 builder.Services.AddEndpointsApiExplorer();
@@ -271,6 +272,9 @@ app.MapControllers();
 app.MapFallbackToFile("index.html").AllowAnonymous();
 
 app.Run();
+
+static IActionResult DescribeBodyThatCouldNotBeBound(ActionContext context) =>
+    new BadRequestObjectResult(new ApiError(Code: null, "The request could not be read."));
 
 static void TrustAnyUnroutablePrivateNetworkAsReverseProxy(IList<System.Net.IPNetwork> knownNetworks)
 {

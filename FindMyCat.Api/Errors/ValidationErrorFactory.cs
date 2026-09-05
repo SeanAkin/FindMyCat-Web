@@ -1,68 +1,45 @@
-using System.Text.Json;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Microsoft.Extensions.Options;
+using FindMyCat.Core.Errors;
+using FluentValidation.Results;
 
 namespace FindMyCat.Api.Errors;
 
-internal sealed class ValidationErrorFactory(IOptions<JsonOptions> jsonOptions)
+internal static class ValidationErrorFactory
 {
-    public const string RequestField = "_";
+    private const string InvalidRequest = "The request was not valid.";
 
-    private const string UnreadableValue = "The value provided is not valid.";
+    public static ApiError FromFailures(IReadOnlyCollection<ValidationFailure> failures) =>
+        new(DomainCodeFor(failures), InvalidRequest, FieldsFor(failures));
 
-    private readonly JsonNamingPolicy? _namingPolicy =
-        jsonOptions.Value.JsonSerializerOptions.PropertyNamingPolicy;
-
-    public ApiError FromModelState(ModelStateDictionary modelState)
+    private static IReadOnlyDictionary<string, IReadOnlyList<string>>? FieldsFor(
+        IEnumerable<ValidationFailure> failures)
     {
-        var errors = modelState
-            .Select(entry => (Field: FieldNameFor(entry.Key), Messages: MessagesFor(entry.Value)))
-            .Where(entry => entry.Messages.Count > 0)
-            .GroupBy(entry => entry.Field, StringComparer.Ordinal)
+        var fields = failures
+            .GroupBy(failure => failure.PropertyName, StringComparer.Ordinal)
             .ToDictionary(
                 group => group.Key,
                 group => (IReadOnlyList<string>)group
-                    .SelectMany(entry => entry.Messages)
+                    .Select(failure => failure.ErrorMessage)
                     .Distinct(StringComparer.Ordinal)
                     .ToArray(),
                 StringComparer.Ordinal);
 
-        return new ApiError(
-            Code: null,
-            Message: "The request was not valid.",
-            Errors: errors.Count > 0 ? errors : null);
+        return fields.Count > 0 ? fields : null;
     }
 
-    private static IReadOnlyList<string> MessagesFor(ModelStateEntry? entry) =>
-        entry is null
-            ? []
-            : entry.Errors
-                .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage) ? UnreadableValue : error.ErrorMessage)
-                .ToArray();
-    
-    private string FieldNameFor(string key)
+    private static string? DomainCodeFor(IEnumerable<ValidationFailure> failures)
     {
-        var path = key.StartsWith('$') ? key[1..] : key;
-        path = path.StartsWith('.') ? path[1..] : path;
+        var distinctCodes = failures
+            .Select(failure => failure.ErrorCode)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
 
-        return path.Length == 0
-            ? RequestField
-            : string.Join('.', path.Split('.').Select(ConvertSegment));
-    }
-    
-    private string ConvertSegment(string segment)
-    {
-        var indexer = segment.IndexOf('[', StringComparison.Ordinal);
-        if (indexer < 0)
+        if (distinctCodes.Length != 1)
         {
-            return ConvertName(segment);
+            return null;
         }
 
-        var name = segment[..indexer];
-        return name.Length == 0 ? segment : ConvertName(name) + segment[indexer..];
-    }
+        var sharedCode = distinctCodes[0];
 
-    private string ConvertName(string name) =>
-        name.Length == 0 || _namingPolicy is null ? name : _namingPolicy.ConvertName(name);
+        return ErrorCodes.All.Contains(sharedCode) ? sharedCode : null;
+    }
 }

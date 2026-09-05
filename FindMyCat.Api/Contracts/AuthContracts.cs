@@ -1,7 +1,5 @@
-using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using FindMyCat.Core.Entities;
-using FindMyCat.Core.Security;
 
 namespace FindMyCat.Api.Contracts;
 
@@ -21,13 +19,13 @@ public sealed record SessionResponse(Guid Id, string Email, string DisplayName, 
 }
 
 public sealed record RegisterRequest(
-    [Required][EmailAddress][StringLength(320)] string Email,
-    [Required][StringLength(255, MinimumLength = 1)] string DisplayName,
-    [Required][StringLength(PasswordPolicy.MaximumLength)] string Password);
+    string Email,
+    string DisplayName,
+    string Password);
 
 public sealed record LoginRequest(
-    [Required][EmailAddress][StringLength(320)] string Email,
-    [Required][StringLength(PasswordPolicy.MaximumLength)] string Password);
+    string Email,
+    string Password);
 
 
 public enum AuthProvider

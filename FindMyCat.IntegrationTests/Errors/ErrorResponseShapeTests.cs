@@ -104,16 +104,20 @@ public sealed class ErrorResponseShapeTests : IntegrationTestBase
         body.Message.ShouldNotContain(imei);
     }
 
-    [Fact]
-    public async Task Malformed_body_reports_what_went_wrong_instead_of_dropping_it()
+    [Theory]
+    [InlineData("{ \"email\": ")]
+    [InlineData("""{"email":123,"displayName":"Person","password":"Str0ng!Pass"}""")]
+    [InlineData("")]
+    public async Task A_request_that_cannot_be_bound_is_answered_with_a_flat_message_and_nothing_else(
+        string requestBody)
     {
-        using var content = new StringContent("{ \"email\": ", Encoding.UTF8, "application/json");
+        using var content = new StringContent(requestBody, Encoding.UTF8, "application/json");
 
         var response = await Client.PostAsync("/auth/register", content, TestContext.Current.CancellationToken);
+        var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
-        var body = await AssertApiErrorAsync(response, HttpStatusCode.BadRequest, expectedCode: null);
-        body.Errors.ShouldNotBeNull();
-        body.Errors.Values.SelectMany(messages => messages).ShouldNotBeEmpty();
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        json.ShouldBe("""{"message":"The request could not be read."}""");
     }
 
     private static async Task<ApiError> AssertApiErrorAsync(

@@ -35,10 +35,30 @@ public sealed class RequestValidationTests : IntegrationTestBase
     {
         var body = await PostRegistrationAsync(new RegisterRequest(email, displayName, password));
 
-        body.Code.ShouldBeNull();
         body.Errors.ShouldNotBeNull();
         body.Errors.Keys.OrderBy(field => field).ShouldBe(expectedFields.OrderBy(field => field));
         body.Errors.Values.ShouldAllBe(messages => messages.Count > 0);
+    }
+
+    [Fact]
+    public async Task Register_WithNothingWrongBeyondTheFieldItself_CarriesNoCode()
+    {
+        var body = await PostRegistrationAsync(
+            new RegisterRequest("not-an-email", ValidDisplayName, ValidPassword));
+
+        body.Code.ShouldBeNull();
+        body.Errors.ShouldNotBeNull();
+        body.Errors.Keys.ShouldBe(["email"]);
+    }
+
+    [Fact]
+    public async Task Register_WithAFaultOutsideThePasswordToo_WithholdsTheWeakPasswordCode()
+    {
+        var body = await PostRegistrationAsync(new RegisterRequest("not-an-email", ValidDisplayName, "weak"));
+
+        body.Code.ShouldBeNull();
+        body.Errors.ShouldNotBeNull();
+        body.Errors.Keys.OrderBy(field => field).ShouldBe(["email", "password"]);
     }
 
     [Theory]
@@ -77,9 +97,9 @@ public sealed class RequestValidationTests : IntegrationTestBase
 
         body.Code.ShouldBe(ErrorCodes.WeakPassword);
         body.Errors.ShouldNotBeNull();
-        body.Errors.Keys.ShouldBe([WeakPasswordException.PasswordField]);
+        body.Errors.Keys.ShouldBe(["password"]);
 
-        var messages = body.Errors[WeakPasswordException.PasswordField];
+        var messages = body.Errors["password"];
         messages.Count.ShouldBe(expectedRequirements.Length);
 
         foreach (var requirement in expectedRequirements)

@@ -17,7 +17,4 @@ public sealed class EmailRegisteredWithPasswordException()
 public sealed class WeakPasswordException(IReadOnlyList<string> violations)
     : FindMyCatException(HttpStatusCode.BadRequest, ErrorCodes.WeakPassword,
         "That password does not meet the requirements.",
-        errors: ValidationErrors.For(WeakPasswordException.PasswordField, violations))
-{
-    public const string PasswordField = "password";
-}
+        logDetail: string.Join(" ", violations));

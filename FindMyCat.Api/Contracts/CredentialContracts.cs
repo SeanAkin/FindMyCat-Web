@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using FindMyCat.Core.Models;
 
 namespace FindMyCat.Api.Contracts;
@@ -12,6 +11,6 @@ public sealed record CredentialStatusResponse(bool TraccarConfigured, bool Holog
         status.HologramConfigured);
 }
 
-public sealed record SetTraccarCredentialRequest([Required] string ApiToken);
+public sealed record SetTraccarCredentialRequest(string ApiToken);
 
-public sealed record SetHologramCredentialRequest([Required] string ApiKey);
+public sealed record SetHologramCredentialRequest(string ApiKey);
