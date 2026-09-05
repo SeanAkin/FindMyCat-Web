@@ -1,8 +1,9 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using FindMyCat.Api.Contracts;
 using FindMyCat.Api.Errors;
 using FindMyCat.Core.Entities;
+using FindMyCat.Core.Errors;
 using FindMyCat.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -62,7 +63,7 @@ public sealed class PasswordAuthenticationTests : IClassFixture<PasswordAuthenti
 
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("not_allow_listed");
+        body!.Code.ShouldBe(ErrorCodes.NotAllowListed);
         (await scope.Db.Users.CountAsync(TestContext.Current.CancellationToken)).ShouldBe(1);
     }
 
@@ -80,7 +81,7 @@ public sealed class PasswordAuthenticationTests : IClassFixture<PasswordAuthenti
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("weak_password");
+        body!.Code.ShouldBe(ErrorCodes.WeakPassword);
     }
 
     [Fact]
@@ -119,7 +120,7 @@ public sealed class PasswordAuthenticationTests : IClassFixture<PasswordAuthenti
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("email_already_registered");
+        body!.Code.ShouldBe(ErrorCodes.EmailAlreadyRegistered);
         (await scope.Db.Users.CountAsync(TestContext.Current.CancellationToken)).ShouldBe(1);
     }
 
@@ -191,7 +192,7 @@ public sealed class PasswordAuthenticationTests : IClassFixture<PasswordAuthenti
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("email_already_registered");
+        body!.Code.ShouldBe(ErrorCodes.EmailAlreadyRegistered);
     }
 
     [Fact]

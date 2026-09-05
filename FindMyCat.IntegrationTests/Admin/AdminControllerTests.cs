@@ -1,8 +1,9 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using FindMyCat.Api.Contracts;
 using FindMyCat.Api.Errors;
 using FindMyCat.Core.Entities;
+using FindMyCat.Core.Errors;
 using FindMyCat.IntegrationTests.Infrastructure;
 
 namespace FindMyCat.IntegrationTests.Admin;
@@ -122,7 +123,7 @@ public sealed class AdminControllerTests : IntegrationTestBase
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("primary_administrator_protected");
+        body!.Code.ShouldBe(ErrorCodes.PrimaryAdministratorProtected);
 
         var list = await client.GetFromJsonAsync<List<AllowedEmailResponse>>(
             "/api/admin/allowed-emails", TestContext.Current.CancellationToken) ?? [];
@@ -198,7 +199,7 @@ public sealed class AdminControllerTests : IntegrationTestBase
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("primary_administrator_protected");
+        body!.Code.ShouldBe(ErrorCodes.PrimaryAdministratorProtected);
     }
 
     [Fact]

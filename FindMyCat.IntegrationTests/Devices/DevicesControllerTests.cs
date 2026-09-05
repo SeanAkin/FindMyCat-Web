@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using FindMyCat.Api.Contracts;
 using FindMyCat.Api.Errors;
@@ -35,7 +35,7 @@ public sealed class DevicesControllerTests : IntegrationTestBase
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("traccar_not_configured");
+        body!.Code.ShouldBe(ErrorCodes.TraccarNotConfigured);
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public sealed class DevicesControllerTests : IntegrationTestBase
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("traccar_credential_rejected");
+        body!.Code.ShouldBe(ErrorCodes.TraccarCredentialRejected);
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public sealed class DevicesControllerTests : IntegrationTestBase
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadGateway);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("traccar_unavailable");
+        body!.Code.ShouldBe(ErrorCodes.TraccarUnavailable);
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public sealed class DevicesControllerTests : IntegrationTestBase
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("invalid_range");
+        body!.Code.ShouldBe(ErrorCodes.InvalidRange);
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public sealed class DevicesControllerTests : IntegrationTestBase
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("range_too_large");
+        body!.Code.ShouldBe(ErrorCodes.RangeTooLarge);
     }
 
     [Fact]
@@ -185,7 +185,7 @@ public sealed class DevicesControllerTests : IntegrationTestBase
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("hologram_not_configured");
+        body!.Code.ShouldBe(ErrorCodes.HologramNotConfigured);
     }
 
     [Fact]
@@ -217,7 +217,7 @@ public sealed class DevicesControllerTests : IntegrationTestBase
 
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("hologram_device_not_found");
+        body!.Code.ShouldBe(ErrorCodes.HologramDeviceNotFound);
     }
 
     [Fact]
@@ -234,7 +234,7 @@ public sealed class DevicesControllerTests : IntegrationTestBase
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("hologram_credential_rejected");
+        body!.Code.ShouldBe(ErrorCodes.HologramCredentialRejected);
     }
 
     [Fact]
@@ -251,7 +251,7 @@ public sealed class DevicesControllerTests : IntegrationTestBase
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadGateway);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("hologram_unavailable");
+        body!.Code.ShouldBe(ErrorCodes.HologramUnavailable);
     }
 
 }

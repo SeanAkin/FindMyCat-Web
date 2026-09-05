@@ -61,7 +61,6 @@ export interface UserResponse {
   lastLoginAt: string
 }
 
-// Mirrors ErrorCodes.cs; ErrorCodeContractTests fails the .NET build if these drift.
 export type ApiErrorCode =
   | 'not_allow_listed'
   | 'email_already_registered'
