@@ -1,4 +1,4 @@
-using FindMyCat.Api.Contracts;
+﻿using FindMyCat.Api.Contracts;
 using FindMyCat.Core.Errors;
 using FindMyCat.Core.Integrations.Hologram;
 using FindMyCat.Core.Integrations.Traccar;
@@ -29,11 +29,11 @@ public class DevicesController(ITraccarService traccarService, IHologramService 
     [HttpGet("{deviceId:long}/history")]
     public async Task<ActionResult<IReadOnlyList<PositionResponse>>> GetHistory(
         long deviceId,
-        [FromQuery] DateTimeOffset from,
-        [FromQuery] DateTimeOffset to,
+        [FromQuery] HistoryRangeRequest request,
         CancellationToken cancellationToken)
     {
-        var history = await traccarService.GetHistoryAsync(deviceId, from, to, cancellationToken);
+        var history = await traccarService.GetHistoryAsync(
+            deviceId, request.From!.Value, request.To!.Value, cancellationToken);
         return Ok(history.Select(PositionResponse.FromDomain).ToList());
     }
 

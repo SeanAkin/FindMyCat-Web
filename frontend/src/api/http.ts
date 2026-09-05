@@ -27,7 +27,11 @@ export class ApiError extends Error {
 
   /** Messages the server rejected this field with, or an empty list. */
   errorsFor(field: string): readonly string[] {
-    return this.fieldErrors?.[field] ?? []
+    if (!this.fieldErrors || !Object.hasOwn(this.fieldErrors, field)) {
+      return []
+    }
+
+    return this.fieldErrors[field] ?? []
   }
 }
 

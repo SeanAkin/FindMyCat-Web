@@ -1,7 +1,6 @@
 ﻿using System.Net;
 using System.Security.Authentication;
 using System.Security.Claims;
-using System.Text.Json;
 using System.Threading.RateLimiting;
 using FindMyCat.Api.Auth;
 using FindMyCat.Api.Errors;
@@ -29,7 +28,9 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 ValidatorOptions.Global.PropertyNameResolver = (_, member, _) =>
-    member is null ? null : JsonNamingPolicy.CamelCase.ConvertName(member.Name);
+    member is null
+        ? null
+        : ApiJsonOptions.Default.PropertyNamingPolicy?.ConvertName(member.Name) ?? member.Name;
 
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
 
@@ -37,7 +38,7 @@ builder.Services.AddControllers(options => options.Filters.Add<RequestValidation
     .AddJsonOptions(options => ApiJsonOptions.Configure(options.JsonSerializerOptions));
 
 builder.Services.Configure<ApiBehaviorOptions>(options =>
-    options.InvalidModelStateResponseFactory = DescribeBodyThatCouldNotBeBound);
+    options.InvalidModelStateResponseFactory = DescribeRequestThatCouldNotBeBound);
 
 builder.Services.AddExceptionHandler<FindMyCatExceptionHandler>();
 builder.Services.AddEndpointsApiExplorer();
@@ -273,7 +274,7 @@ app.MapFallbackToFile("index.html").AllowAnonymous();
 
 app.Run();
 
-static IActionResult DescribeBodyThatCouldNotBeBound(ActionContext context) =>
+static IActionResult DescribeRequestThatCouldNotBeBound(ActionContext context) =>
     new BadRequestObjectResult(new ApiError(Code: null, "The request could not be read."));
 
 static void TrustAnyUnroutablePrivateNetworkAsReverseProxy(IList<System.Net.IPNetwork> knownNetworks)

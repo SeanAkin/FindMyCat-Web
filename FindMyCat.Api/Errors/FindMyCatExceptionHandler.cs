@@ -1,4 +1,4 @@
-using FindMyCat.Core.Errors;
+﻿using FindMyCat.Core.Errors;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 
@@ -27,11 +27,6 @@ internal sealed class FindMyCatExceptionHandler(ILogger<FindMyCatExceptionHandle
             "{Method} {Path} failed with {StatusCode} {ErrorCode}. Detail: {LogDetail}",
             httpContext.Request.Method, httpContext.Request.Path, statusCode, error.Code ?? "(no code)",
             logDetail ?? "(none)");
-
-        if (httpContext.Response.HasStarted)
-        {
-            return false;
-        }
 
         await ApiErrorResults.WriteAsync(httpContext.Response, statusCode, error, cancellationToken);
         return true;

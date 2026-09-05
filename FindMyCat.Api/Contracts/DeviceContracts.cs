@@ -1,4 +1,4 @@
-using FindMyCat.Core.Integrations.Traccar;
+﻿using FindMyCat.Core.Integrations.Traccar;
 
 namespace FindMyCat.Api.Contracts;
 
@@ -51,4 +51,6 @@ public sealed record PositionResponse(
         position.BatteryLevel,
         position.Satellites);
 }
+
+public sealed record HistoryRangeRequest(DateTimeOffset? From, DateTimeOffset? To);
 

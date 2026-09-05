@@ -123,6 +123,26 @@ public sealed class DevicesControllerTests : IntegrationTestBase
         position.BatteryLevel.ShouldBe(55);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("?from=2025-01-01T00:00:00Z")]
+    [InlineData("?to=2025-01-02T00:00:00Z")]
+    public async Task History_names_the_end_of_the_range_that_was_not_supplied(string query)
+    {
+        var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
+        using var client = CreateAuthenticatedClient(user);
+
+        var response = await client.GetAsync(
+            $"/api/devices/1/history{query}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
+        body!.Code.ShouldBeNull();
+        body.Errors.ShouldNotBeNull();
+        body.Errors.ShouldNotBeEmpty();
+        body.Errors.Keys.ShouldBeSubsetOf(["from", "to"]);
+    }
+
     [Fact]
     public async Task History_rejects_inverted_range()
     {

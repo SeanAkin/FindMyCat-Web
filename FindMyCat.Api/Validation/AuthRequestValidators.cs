@@ -1,4 +1,4 @@
-using FindMyCat.Api.Contracts;
+﻿using FindMyCat.Api.Contracts;
 using FindMyCat.Core.Errors;
 using FindMyCat.Core.Security;
 using FluentValidation;
@@ -32,9 +32,9 @@ public sealed class LoginRequestValidator : AbstractValidator<LoginRequest>
     public LoginRequestValidator()
     {
         RuleFor(request => request.Email).NotEmpty().EmailAddress().MaximumLength(320);
-        RuleForPasswordShapeWithoutRevealingThePolicy();
+        RuleForPasswordShapeOnly();
     }
 
-    private void RuleForPasswordShapeWithoutRevealingThePolicy() =>
+    private void RuleForPasswordShapeOnly() =>
         RuleFor(request => request.Password).NotEmpty().MaximumLength(PasswordPolicy.MaximumLength);
 }

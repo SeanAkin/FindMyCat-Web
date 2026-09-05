@@ -14,7 +14,9 @@ type Mode = 'signin' | 'register'
 export function LoginPage() {
   const status = useAuthStore((state) => state.status)
   const signIn = useAuthStore((state) => state.signIn)
-  const googleEnabled = useAuthStore((state) => state.providers.includes('Google'))
+  const googleEnabled = useAuthStore((state) =>
+    state.providers.includes('Google'),
+  )
   const [searchParams] = useSearchParams()
   const redirectError = searchParams.get('error')
 
@@ -68,6 +70,8 @@ export function LoginPage() {
     }
   }
 
+  const displayNameErrors = submitError?.errorsFor('displayName') ?? []
+  const emailErrors = submitError?.errorsFor('email') ?? []
   const passwordErrors = submitError?.errorsFor('password') ?? []
 
   const switchMode = (nextMode: Mode) => {
@@ -115,8 +119,12 @@ export function LoginPage() {
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
               placeholder="Jane Doe"
+              aria-invalid={displayNameErrors.length > 0}
+              aria-describedby={
+                displayNameErrors.length > 0 ? 'displayName-errors' : undefined
+              }
             />
-            <FieldErrors messages={submitError?.errorsFor('displayName')} />
+            <FieldErrors id="displayName-errors" messages={displayNameErrors} />
           </label>
         )}
         <label className="flex flex-col gap-1 text-sm">
@@ -127,8 +135,12 @@ export function LoginPage() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="name@example.com"
+            aria-invalid={emailErrors.length > 0}
+            aria-describedby={
+              emailErrors.length > 0 ? 'email-errors' : undefined
+            }
           />
-          <FieldErrors messages={submitError?.errorsFor('email')} />
+          <FieldErrors id="email-errors" messages={emailErrors} />
         </label>
         <label className="flex flex-col gap-1 text-sm">
           Password
@@ -139,17 +151,21 @@ export function LoginPage() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="••••••••"
+            aria-invalid={passwordErrors.length > 0}
+            aria-describedby={
+              passwordErrors.length > 0 ? 'password-errors' : undefined
+            }
           />
+          {passwordErrors.length > 0 ? (
+            <FieldErrors id="password-errors" messages={passwordErrors} />
+          ) : (
+            mode === 'register' && (
+              <p className="text-xs text-muted-foreground">
+                8-64 characters, with one uppercase letter and one symbol.
+              </p>
+            )
+          )}
         </label>
-        {passwordErrors.length > 0 ? (
-          <FieldErrors messages={passwordErrors} />
-        ) : (
-          mode === 'register' && (
-            <p className="text-xs text-muted-foreground">
-              8-64 characters, with one uppercase letter and one symbol.
-            </p>
-          )
-        )}
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting
             ? mode === 'signin'
@@ -188,14 +204,22 @@ export function LoginPage() {
   )
 }
 
-/** Server-side messages for a single field. Renders nothing when the field is fine. */
-function FieldErrors({ messages }: { messages?: readonly string[] }) {
+type FieldErrorsProps = {
+  id: string
+  messages?: readonly string[]
+}
+
+function FieldErrors({ id, messages }: FieldErrorsProps) {
   if (!messages || messages.length === 0) {
     return null
   }
 
   return (
-    <ul className="flex flex-col gap-0.5 text-xs text-destructive">
+    <ul
+      id={id}
+      aria-live="polite"
+      className="flex flex-col gap-0.5 text-xs text-destructive"
+    >
       {messages.map((message) => (
         <li key={message}>{message}</li>
       ))}
