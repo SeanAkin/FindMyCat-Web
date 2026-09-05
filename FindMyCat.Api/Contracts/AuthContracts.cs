@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using FindMyCat.Core.Entities;
-using FindMyCat.Core.Services;
+using FindMyCat.Core.Security;
 
 namespace FindMyCat.Api.Contracts;
 
@@ -29,7 +29,6 @@ public sealed record LoginRequest(
     [Required][EmailAddress][StringLength(320)] string Email,
     [Required][StringLength(PasswordPolicy.MaximumLength)] string Password);
 
-public sealed record AuthErrorResponse(string Code, string Message);
 
 public enum AuthProvider
 {

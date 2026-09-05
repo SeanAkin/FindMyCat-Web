@@ -1,6 +1,8 @@
-using FindMyCat.Api.Auth;
+﻿using FindMyCat.Api.Auth;
 using FindMyCat.Api.Contracts;
+using FindMyCat.Api.Errors;
 using FindMyCat.Core.Entities;
+using FindMyCat.Core.Errors;
 using FindMyCat.Core.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -34,7 +36,7 @@ public class AuthController(IUserProvisioningService userProvisioningService, Go
     {
         if (!googleAuthSettings.Enabled)
         {
-            return NotFound();
+            return NotFound(new ApiError(Code: null, "Google sign-in is not enabled."));
         }
 
         var redirectUri = "/";
@@ -52,16 +54,11 @@ public class AuthController(IUserProvisioningService userProvisioningService, Go
     [EnableRateLimiting("auth")]
     public async Task<ActionResult<SessionResponse>> Register([FromBody] RegisterRequest request, CancellationToken cancellationToken)
     {
-        var result = await userProvisioningService.RegisterWithPasswordAsync(
+        var user = await userProvisioningService.RegisterWithPasswordAsync(
             request.Email, request.DisplayName, request.Password, cancellationToken);
 
-        if (!result.IsSuccess)
-        {
-            return DenialResponse(result.DenialCode, result.DenialReason);
-        }
-
-        await SignInWithCookieAsync(result.User!);
-        return Ok(SessionResponse.FromDomain(result.User!));
+        await SignInWithCookieAsync(user);
+        return Ok(SessionResponse.FromDomain(user));
     }
 
     [HttpPost("login")]
@@ -72,7 +69,7 @@ public class AuthController(IUserProvisioningService userProvisioningService, Go
         var result = await userProvisioningService.SignInWithPasswordAsync(request.Email, request.Password, cancellationToken);
         if (!result.IsSuccess)
         {
-            return Unauthorized(new AuthErrorResponse("invalid_credentials", "Incorrect email or password."));
+            return Unauthorized(new ApiError(ErrorCodes.InvalidCredentials, "Incorrect email or password."));
         }
 
         await SignInWithCookieAsync(result.User!);
@@ -91,11 +88,4 @@ public class AuthController(IUserProvisioningService userProvisioningService, Go
 
     private Task SignInWithCookieAsync(User user) =>
         HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, AuthClaimsFactory.CreatePrincipal(user));
-
-    private ActionResult DenialResponse(string? code, string? message) => code switch
-    {
-        "weak_password" => BadRequest(new AuthErrorResponse(code, message!)),
-        "email_already_registered" => Conflict(new AuthErrorResponse(code, message!)),
-        _ => StatusCode(StatusCodes.Status403Forbidden, new AuthErrorResponse(code ?? "not_allow_listed", message ?? "Access denied.")),
-    };
 }

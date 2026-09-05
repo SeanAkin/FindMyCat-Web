@@ -1,5 +1,6 @@
 using System.Net;
-using FindMyCat.Core.Services.Traccar;
+using FindMyCat.Core.Errors;
+using FindMyCat.Core.Integrations.Traccar;
 using FindMyCat.UnitTests.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -106,36 +107,36 @@ public class TraccarClientTests
     }
 
     [Fact]
-    public async Task Unauthorized_response_throws_with_credential_rejected()
+    public async Task Unauthorized_response_throws_credential_rejected()
     {
         var handler = StubHttpMessageHandler.ReturningJson(_ => (HttpStatusCode.Unauthorized, "denied"));
         var client = CreateClient(handler);
 
-        var ex = await Should.ThrowAsync<TraccarUpstreamException>(
+        var ex = await Should.ThrowAsync<TraccarCredentialRejectedException>(
             () => client.GetDevicesWithPositionsAsync("tok"));
 
-        ex.CredentialRejected.ShouldBeTrue();
+        ex.Code.ShouldBe(ErrorCodes.TraccarCredentialRejected);
         ex.Message.ShouldNotContain("denied");
     }
 
     [Fact]
-    public async Task Server_error_throws_without_credential_rejected()
+    public async Task Server_error_throws_unavailable()
     {
         var handler = StubHttpMessageHandler.ReturningJson(_ => (HttpStatusCode.InternalServerError, "error"));
         var client = CreateClient(handler);
 
-        var ex = await Should.ThrowAsync<TraccarUpstreamException>(
+        var ex = await Should.ThrowAsync<TraccarUnavailableException>(
             () => client.GetDevicesWithPositionsAsync("tok"));
 
-        ex.CredentialRejected.ShouldBeFalse();
+        ex.Code.ShouldBe(ErrorCodes.TraccarUnavailable);
     }
 
     [Fact]
-    public async Task Malformed_json_throws_upstream_exception()
+    public async Task Malformed_json_throws_unavailable()
     {
         var handler = StubHttpMessageHandler.ReturningJson(_ => (HttpStatusCode.OK, "not json"));
         var client = CreateClient(handler);
 
-        await Should.ThrowAsync<TraccarUpstreamException>(() => client.GetDevicesWithPositionsAsync("tok"));
+        await Should.ThrowAsync<TraccarUnavailableException>(() => client.GetDevicesWithPositionsAsync("tok"));
     }
 }

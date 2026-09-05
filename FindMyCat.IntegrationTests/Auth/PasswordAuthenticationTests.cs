@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using FindMyCat.Api.Contracts;
+using FindMyCat.Api.Errors;
 using FindMyCat.Core.Entities;
 using FindMyCat.Data;
 using Microsoft.AspNetCore.Hosting;
@@ -8,7 +9,6 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 namespace FindMyCat.IntegrationTests.Auth;
@@ -61,7 +61,7 @@ public sealed class PasswordAuthenticationTests : IClassFixture<PasswordAuthenti
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        var body = await response.Content.ReadFromJsonAsync<AuthErrorResponse>(TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
         body!.Code.ShouldBe("not_allow_listed");
         (await scope.Db.Users.CountAsync(TestContext.Current.CancellationToken)).ShouldBe(1);
     }
@@ -79,7 +79,7 @@ public sealed class PasswordAuthenticationTests : IClassFixture<PasswordAuthenti
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        var body = await response.Content.ReadFromJsonAsync<AuthErrorResponse>(TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
         body!.Code.ShouldBe("weak_password");
     }
 
@@ -118,7 +118,7 @@ public sealed class PasswordAuthenticationTests : IClassFixture<PasswordAuthenti
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
-        var body = await response.Content.ReadFromJsonAsync<AuthErrorResponse>(TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
         body!.Code.ShouldBe("email_already_registered");
         (await scope.Db.Users.CountAsync(TestContext.Current.CancellationToken)).ShouldBe(1);
     }
@@ -190,7 +190,7 @@ public sealed class PasswordAuthenticationTests : IClassFixture<PasswordAuthenti
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
-        var body = await response.Content.ReadFromJsonAsync<AuthErrorResponse>(TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
         body!.Code.ShouldBe("email_already_registered");
     }
 

@@ -1,4 +1,4 @@
-using FindMyCat.Core.Services.Traccar;
+using FindMyCat.Core.Integrations.Traccar;
 
 namespace FindMyCat.Api.Contracts;
 
@@ -52,4 +52,3 @@ public sealed record PositionResponse(
         position.Satellites);
 }
 
-public sealed record TraccarErrorResponse(string Code, string Message);

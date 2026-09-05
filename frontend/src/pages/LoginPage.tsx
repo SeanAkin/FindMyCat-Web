@@ -1,12 +1,12 @@
 import { type FormEvent, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { login, register } from '@/api/auth'
-import { toApiError } from '@/api/http'
+import { ApiError, toApiError } from '@/api/http'
 import { Logo } from '@/components/Logo'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { type AuthErrorMessage, getAuthErrorMessage } from '@/lib/authErrors'
+import { getAuthErrorMessage } from '@/lib/authErrors'
 import { useAuthStore } from '@/stores/authStore'
 
 type Mode = 'signin' | 'register'
@@ -23,7 +23,11 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formError, setFormError] = useState<AuthErrorMessage | null>(null)
+  const [submitError, setSubmitError] = useState<ApiError | null>(null)
+
+  // Derived during render rather than mirrored into state: one error drives both the
+  // banner and the per-field messages.
+  const formError = submitError ? getAuthErrorMessage(submitError) : null
 
   if (status === 'authenticated') {
     return <Navigate to="/" replace />
@@ -49,7 +53,7 @@ export function LoginPage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setFormError(null)
+    setSubmitError(null)
     setIsSubmitting(true)
     try {
       const session =
@@ -58,15 +62,17 @@ export function LoginPage() {
           : await register(email, password, displayName)
       signIn(session)
     } catch (err) {
-      setFormError(getAuthErrorMessage(toApiError(err)))
+      setSubmitError(toApiError(err))
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  const passwordErrors = submitError?.errorsFor('password') ?? []
+
   const switchMode = (nextMode: Mode) => {
     setMode(nextMode)
-    setFormError(null)
+    setSubmitError(null)
   }
 
   return (
@@ -110,6 +116,7 @@ export function LoginPage() {
               onChange={(event) => setDisplayName(event.target.value)}
               placeholder="Jane Doe"
             />
+            <FieldErrors messages={submitError?.errorsFor('displayName')} />
           </label>
         )}
         <label className="flex flex-col gap-1 text-sm">
@@ -121,6 +128,7 @@ export function LoginPage() {
             onChange={(event) => setEmail(event.target.value)}
             placeholder="name@example.com"
           />
+          <FieldErrors messages={submitError?.errorsFor('email')} />
         </label>
         <label className="flex flex-col gap-1 text-sm">
           Password
@@ -133,10 +141,14 @@ export function LoginPage() {
             placeholder="••••••••"
           />
         </label>
-        {mode === 'register' && (
-          <p className="text-xs text-muted-foreground">
-            8-64 characters, with one uppercase letter and one symbol.
-          </p>
+        {passwordErrors.length > 0 ? (
+          <FieldErrors messages={passwordErrors} />
+        ) : (
+          mode === 'register' && (
+            <p className="text-xs text-muted-foreground">
+              8-64 characters, with one uppercase letter and one symbol.
+            </p>
+          )
         )}
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting
@@ -173,5 +185,20 @@ export function LoginPage() {
         </>
       )}
     </div>
+  )
+}
+
+/** Server-side messages for a single field. Renders nothing when the field is fine. */
+function FieldErrors({ messages }: { messages?: readonly string[] }) {
+  if (!messages || messages.length === 0) {
+    return null
+  }
+
+  return (
+    <ul className="flex flex-col gap-0.5 text-xs text-destructive">
+      {messages.map((message) => (
+        <li key={message}>{message}</li>
+      ))}
+    </ul>
   )
 }

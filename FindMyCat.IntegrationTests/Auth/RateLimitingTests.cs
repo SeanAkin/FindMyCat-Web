@@ -1,6 +1,7 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using FindMyCat.Api.Contracts;
+using FindMyCat.Api.Errors;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
@@ -32,8 +33,9 @@ public sealed class RateLimitingTests : IClassFixture<RateLimitingTests.RateLimi
         }
 
         lastResponse!.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
-        var body = await lastResponse.Content.ReadFromJsonAsync<AuthErrorResponse>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("too_many_requests");
+        var body = await lastResponse.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
+        body!.Code.ShouldBeNull();
+        body.Message.ShouldNotBeNullOrWhiteSpace();
     }
 
     public sealed class RateLimitedFactory : WebApplicationFactory<Program>

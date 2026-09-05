@@ -26,7 +26,7 @@ public class CredentialsController(ICredentialService credentialService) : Contr
         await credentialService.SetTraccarTokenAsync(request.ApiToken, cancellationToken);
         return NoContent();
     }
-    
+
     [HttpPut("hologram")]
     [Authorize(Roles = nameof(UserRole.Administrator))]
     public async Task<IActionResult> SetHologram(
@@ -41,15 +41,15 @@ public class CredentialsController(ICredentialService credentialService) : Contr
     [Authorize(Roles = nameof(UserRole.Administrator))]
     public async Task<IActionResult> DeleteTraccar(CancellationToken cancellationToken)
     {
-        var removed = await credentialService.DeleteTraccarTokenAsync(cancellationToken);
-        return removed ? NoContent() : NotFound();
+        await credentialService.DeleteTraccarTokenAsync(cancellationToken);
+        return NoContent();
     }
 
     [HttpDelete("hologram")]
     [Authorize(Roles = nameof(UserRole.Administrator))]
     public async Task<IActionResult> DeleteHologram(CancellationToken cancellationToken)
     {
-        var removed = await credentialService.DeleteHologramKeyAsync(cancellationToken);
-        return removed ? NoContent() : NotFound();
+        await credentialService.DeleteHologramKeyAsync(cancellationToken);
+        return NoContent();
     }
 }

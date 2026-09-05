@@ -31,4 +31,4 @@ public sealed record UserResponse(
 
 public sealed record UpdateUserRoleRequest([Required] UserRole Role);
 
-public sealed record AdminErrorResponse(string Code, string Message);
+ 

@@ -1,15 +1,21 @@
 using FindMyCat.Core.Entities;
+using FindMyCat.Core.Errors;
+using FindMyCat.Core.Models;
 using FindMyCat.Core.RepositoryContracts;
+using FindMyCat.Core.Security;
 using Microsoft.AspNetCore.Identity;
 
 namespace FindMyCat.Core.Services;
 
 public interface IUserProvisioningService
 {
-    Task<UserProvisioningResult> ProvisionOrSignInAsync(GoogleUserInfo googleUser, CancellationToken cancellationToken = default);
+    Task<User> ProvisionOrSignInAsync(GoogleUserInfo googleUser, CancellationToken cancellationToken = default);
 
-    Task<UserProvisioningResult> RegisterWithPasswordAsync(string email, string displayName, string password, CancellationToken cancellationToken = default);
+    Task<User> RegisterWithPasswordAsync(string email, string displayName, string password, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// The result deliberately cannot distinguish an unknown email from a wrong password.
+    /// </summary>
     Task<PasswordSignInResult> SignInWithPasswordAsync(string email, string password, CancellationToken cancellationToken = default);
 }
 
@@ -18,7 +24,7 @@ public sealed class UserProvisioningService(
     IAllowedEmailRepository allowedEmailRepository,
     IPasswordHasher<User> passwordHasher) : IUserProvisioningService
 {
-    public async Task<UserProvisioningResult> ProvisionOrSignInAsync(GoogleUserInfo googleUser, CancellationToken cancellationToken = default)
+    public async Task<User> ProvisionOrSignInAsync(GoogleUserInfo googleUser, CancellationToken cancellationToken = default)
     {
         var email = EmailNormalizer.Normalize(googleUser.Email);
 
@@ -26,40 +32,32 @@ public sealed class UserProvisioningService(
         if (existing is not null)
         {
             await userRepository.UpdateLastLoginAsync(existing.Id, DateTimeOffset.UtcNow, cancellationToken);
-            return UserProvisioningResult.Success(existing);
+            return existing;
         }
 
         var emailOwner = await userRepository.GetByEmailAsync(email, cancellationToken);
         if (emailOwner is not null)
         {
-            return UserProvisioningResult.Denied(
-                "This email already has a password-based account. Sign in with your email and password instead.",
-                "email_registered_with_password");
+            throw new EmailRegisteredWithPasswordException();
         }
 
         // First user = Primary Admin
         var anyUsersExist = await userRepository.AnyAsync(cancellationToken);
         if (!anyUsersExist)
         {
-            var admin = await CreateGoogleUserAsync(
+            return await CreateGoogleUserAsync(
                 email, googleUser.DisplayName, googleUser.GoogleSubjectId,
                 UserRole.Administrator, isPrimaryAdministrator: true, cancellationToken);
-            return UserProvisioningResult.Success(admin);
         }
 
-        var isAllowListed = await allowedEmailRepository.IsAllowedAsync(email, cancellationToken);
-        if (!isAllowListed)
-        {
-            return UserProvisioningResult.Denied("This email has not been added to the allowed list.");
-        }
+        await RequireAllowListedAsync(email, cancellationToken);
 
-        var user = await CreateGoogleUserAsync(
+        return await CreateGoogleUserAsync(
             email, googleUser.DisplayName, googleUser.GoogleSubjectId,
             UserRole.User, isPrimaryAdministrator: false, cancellationToken);
-        return UserProvisioningResult.Success(user);
     }
 
-    public async Task<UserProvisioningResult> RegisterWithPasswordAsync(
+    public async Task<User> RegisterWithPasswordAsync(
         string email, string displayName, string password, CancellationToken cancellationToken = default)
     {
         email = EmailNormalizer.Normalize(email);
@@ -67,34 +65,27 @@ public sealed class UserProvisioningService(
         var passwordViolations = PasswordPolicy.GetViolations(password);
         if (passwordViolations.Count > 0)
         {
-            return UserProvisioningResult.Denied(string.Join(' ', passwordViolations), "weak_password");
+            throw new WeakPasswordException(passwordViolations);
         }
 
         var emailOwner = await userRepository.GetByEmailAsync(email, cancellationToken);
         if (emailOwner is not null)
         {
-            return UserProvisioningResult.Denied(
-                "An account with this email already exists.", "email_already_registered");
+            throw new EmailAlreadyRegisteredException();
         }
 
         // First user = Primary Admin, regardless of the allow-list.
         var anyUsersExist = await userRepository.AnyAsync(cancellationToken);
         if (!anyUsersExist)
         {
-            var admin = await CreateUserWithPasswordAsync(
+            return await CreateUserWithPasswordAsync(
                 email, displayName, password, UserRole.Administrator, isPrimaryAdministrator: true, cancellationToken);
-            return UserProvisioningResult.Success(admin);
         }
 
-        var isAllowListed = await allowedEmailRepository.IsAllowedAsync(email, cancellationToken);
-        if (!isAllowListed)
-        {
-            return UserProvisioningResult.Denied("This email has not been added to the allowed list.");
-        }
+        await RequireAllowListedAsync(email, cancellationToken);
 
-        var user = await CreateUserWithPasswordAsync(
+        return await CreateUserWithPasswordAsync(
             email, displayName, password, UserRole.User, isPrimaryAdministrator: false, cancellationToken);
-        return UserProvisioningResult.Success(user);
     }
 
     public async Task<PasswordSignInResult> SignInWithPasswordAsync(
@@ -122,6 +113,15 @@ public sealed class UserProvisioningService(
 
         await userRepository.UpdateLastLoginAsync(user.Id, DateTimeOffset.UtcNow, cancellationToken);
         return PasswordSignInResult.Success(user);
+    }
+
+    private async Task RequireAllowListedAsync(string email, CancellationToken cancellationToken)
+    {
+        var isAllowListed = await allowedEmailRepository.IsAllowedAsync(email, cancellationToken);
+        if (!isAllowListed)
+        {
+            throw new NotAllowListedException();
+        }
     }
 
     private async Task<User> CreateUserWithPasswordAsync(

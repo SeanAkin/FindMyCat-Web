@@ -1,18 +1,33 @@
 import type { ApiErrorCode } from '@/api/types'
 
+/** Server-side validation messages, keyed by request field name. */
+export type FieldErrors = Readonly<Record<string, readonly string[]>>
+
 export class ApiError extends Error {
   readonly status: number
   readonly code: ApiErrorCode | null
+  readonly fieldErrors: FieldErrors | null
 
-  constructor(status: number, code: ApiErrorCode | null, message: string) {
+  constructor(
+    status: number,
+    code: ApiErrorCode | null,
+    message: string,
+    fieldErrors: FieldErrors | null = null,
+  ) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.code = code
+    this.fieldErrors = fieldErrors
   }
 
   get isUnauthorized(): boolean {
     return this.status === 401
+  }
+
+  /** Messages the server rejected this field with, or an empty list. */
+  errorsFor(field: string): readonly string[] {
+    return this.fieldErrors?.[field] ?? []
   }
 }
 
@@ -70,11 +85,13 @@ async function parseErrorResponse(response: Response): Promise<ApiError> {
   const body = (await response.json().catch(() => null)) as {
     code?: string
     message?: string
+    errors?: FieldErrors
   } | null
   return new ApiError(
     response.status,
     (body?.code as ApiErrorCode | undefined) ?? null,
     body?.message ?? response.statusText,
+    body?.errors ?? null,
   )
 }
 

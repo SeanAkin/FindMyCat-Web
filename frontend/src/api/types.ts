@@ -61,7 +61,18 @@ export interface UserResponse {
   lastLoginAt: string
 }
 
+// Mirrors ErrorCodes.cs; ErrorCodeContractTests fails the .NET build if these drift.
 export type ApiErrorCode =
+  | 'not_allow_listed'
+  | 'email_already_registered'
+  | 'email_registered_with_password'
+  | 'weak_password'
+  | 'invalid_credentials'
+  | 'primary_administrator_protected'
+  | 'allowed_email_not_found'
+  | 'user_not_found'
+  | 'credential_not_configured'
+  | 'device_position_not_found'
   | 'invalid_range'
   | 'range_too_large'
   | 'traccar_not_configured'
@@ -71,9 +82,3 @@ export type ApiErrorCode =
   | 'hologram_device_not_found'
   | 'hologram_credential_rejected'
   | 'hologram_unavailable'
-  | 'primary_administrator_protected'
-  | 'not_allow_listed'
-  | 'email_already_registered'
-  | 'weak_password'
-  | 'invalid_credentials'
-  | 'email_registered_with_password'

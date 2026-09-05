@@ -1,4 +1,6 @@
 using FindMyCat.Core.Entities;
+using FindMyCat.Core.Errors;
+using FindMyCat.Core.Models;
 using FindMyCat.Core.RepositoryContracts;
 using FindMyCat.Core.Services;
 using Microsoft.AspNetCore.Identity;
@@ -36,10 +38,9 @@ public class UserProvisioningServiceTests
             .Setup(r => r.GetByGoogleSubjectIdAsync("google-123", It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingUser);
 
-        var result = await _sut.ProvisionOrSignInAsync(new GoogleUserInfo("google-123", "cat@example.com", "Cat Owner"), TestContext.Current.CancellationToken);
+        var user = await _sut.ProvisionOrSignInAsync(new GoogleUserInfo("google-123", "cat@example.com", "Cat Owner"), TestContext.Current.CancellationToken);
 
-        result.IsSuccess.ShouldBeTrue();
-        result.User.ShouldBe(existingUser);
+        user.ShouldBe(existingUser);
         _userRepository.Verify(
             r => r.UpdateLastLoginAsync(existingUser.Id, It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()),
             Times.Once);
@@ -62,11 +63,10 @@ public class UserProvisioningServiceTests
             .Setup(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((User u, CancellationToken _) => u);
 
-        var result = await _sut.ProvisionOrSignInAsync(new GoogleUserInfo("google-1", "admin@example.com", "First User"), TestContext.Current.CancellationToken);
+        var user = await _sut.ProvisionOrSignInAsync(new GoogleUserInfo("google-1", "admin@example.com", "First User"), TestContext.Current.CancellationToken);
 
-        result.IsSuccess.ShouldBeTrue();
-        result.User!.Role.ShouldBe(UserRole.Administrator);
-        result.User!.IsPrimaryAdministrator.ShouldBeTrue();
+        user.Role.ShouldBe(UserRole.Administrator);
+        user.IsPrimaryAdministrator.ShouldBeTrue();
 
         _allowedEmailRepository.Verify(r => r.IsAllowedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -90,15 +90,14 @@ public class UserProvisioningServiceTests
             .Setup(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((User u, CancellationToken _) => u);
 
-        var result = await _sut.ProvisionOrSignInAsync(new GoogleUserInfo("google-3", "allowed@example.com", "Allowed Person"), TestContext.Current.CancellationToken);
+        var user = await _sut.ProvisionOrSignInAsync(new GoogleUserInfo("google-3", "allowed@example.com", "Allowed Person"), TestContext.Current.CancellationToken);
 
-        result.IsSuccess.ShouldBeTrue();
-        result.User!.Role.ShouldBe(UserRole.User);
-        result.User!.IsPrimaryAdministrator.ShouldBeFalse();
+        user.Role.ShouldBe(UserRole.User);
+        user.IsPrimaryAdministrator.ShouldBeFalse();
     }
 
     [Fact]
-    public async Task ProvisionOrSignInAsync_NotAllowListed_ReturnsDeniedWithoutCreatingUser()
+    public async Task ProvisionOrSignInAsync_NotAllowListed_ThrowsWithoutCreatingUser()
     {
         _userRepository
             .Setup(r => r.GetByGoogleSubjectIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -113,15 +112,15 @@ public class UserProvisioningServiceTests
             .Setup(r => r.IsAllowedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        var result = await _sut.ProvisionOrSignInAsync(new GoogleUserInfo("google-4", "stranger@example.com", "Stranger"), TestContext.Current.CancellationToken);
+        var exception = await Should.ThrowAsync<NotAllowListedException>(
+            () => _sut.ProvisionOrSignInAsync(new GoogleUserInfo("google-4", "stranger@example.com", "Stranger"), TestContext.Current.CancellationToken));
 
-        result.IsSuccess.ShouldBeFalse();
-        result.DenialReason.ShouldNotBeNullOrWhiteSpace();
+        exception.Code.ShouldBe(ErrorCodes.NotAllowListed);
         _userRepository.Verify(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task ProvisionOrSignInAsync_EmailAlreadyHasPasswordAccount_ReturnsDeniedWithoutCreatingDuplicate()
+    public async Task ProvisionOrSignInAsync_EmailAlreadyHasPasswordAccount_ThrowsWithoutCreatingDuplicate()
     {
         var existingPasswordUser = new User
         {
@@ -141,26 +140,27 @@ public class UserProvisioningServiceTests
             .Setup(r => r.GetByEmailAsync("cat@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingPasswordUser);
 
-        var result = await _sut.ProvisionOrSignInAsync(new GoogleUserInfo("google-5", "cat@example.com", "Cat Owner"), TestContext.Current.CancellationToken);
+        var exception = await Should.ThrowAsync<EmailRegisteredWithPasswordException>(
+            () => _sut.ProvisionOrSignInAsync(new GoogleUserInfo("google-5", "cat@example.com", "Cat Owner"), TestContext.Current.CancellationToken));
 
-        result.IsSuccess.ShouldBeFalse();
-        result.DenialCode.ShouldBe("email_registered_with_password");
+        exception.Code.ShouldBe(ErrorCodes.EmailRegisteredWithPassword);
         _userRepository.Verify(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task RegisterWithPasswordAsync_WeakPassword_ReturnsDeniedWithoutCreatingUser()
+    public async Task RegisterWithPasswordAsync_WeakPassword_ThrowsWithoutCreatingUser()
     {
-        var result = await _sut.RegisterWithPasswordAsync(
-            "new@example.com", "New Person", "weak", TestContext.Current.CancellationToken);
+        var exception = await Should.ThrowAsync<WeakPasswordException>(
+            () => _sut.RegisterWithPasswordAsync(
+                "new@example.com", "New Person", "weak", TestContext.Current.CancellationToken));
 
-        result.IsSuccess.ShouldBeFalse();
-        result.DenialCode.ShouldBe("weak_password");
+        exception.Code.ShouldBe(ErrorCodes.WeakPassword);
+        exception.Message.ShouldNotBeNullOrWhiteSpace();
         _userRepository.Verify(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task RegisterWithPasswordAsync_EmailAlreadyRegistered_ReturnsDeniedWithoutCreatingUser()
+    public async Task RegisterWithPasswordAsync_EmailAlreadyRegistered_ThrowsWithoutCreatingUser()
     {
         var existingUser = new User
         {
@@ -176,11 +176,11 @@ public class UserProvisioningServiceTests
             .Setup(r => r.GetByEmailAsync("cat@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingUser);
 
-        var result = await _sut.RegisterWithPasswordAsync(
-            "cat@example.com", "Cat Owner", "Str0ng!Pass", TestContext.Current.CancellationToken);
+        var exception = await Should.ThrowAsync<EmailAlreadyRegisteredException>(
+            () => _sut.RegisterWithPasswordAsync(
+                "cat@example.com", "Cat Owner", "Str0ng!Pass", TestContext.Current.CancellationToken));
 
-        result.IsSuccess.ShouldBeFalse();
-        result.DenialCode.ShouldBe("email_already_registered");
+        exception.Code.ShouldBe(ErrorCodes.EmailAlreadyRegistered);
         _userRepository.Verify(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -197,19 +197,18 @@ public class UserProvisioningServiceTests
             .Setup(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((User u, CancellationToken _) => u);
 
-        var result = await _sut.RegisterWithPasswordAsync(
+        var user = await _sut.RegisterWithPasswordAsync(
             "admin@example.com", "First User", "Str0ng!Pass", TestContext.Current.CancellationToken);
 
-        result.IsSuccess.ShouldBeTrue();
-        result.User!.Role.ShouldBe(UserRole.Administrator);
-        result.User!.IsPrimaryAdministrator.ShouldBeTrue();
-        result.User!.GoogleSubjectId.ShouldBeNull();
-        result.User!.PasswordHash.ShouldNotBeNullOrWhiteSpace();
+        user.Role.ShouldBe(UserRole.Administrator);
+        user.IsPrimaryAdministrator.ShouldBeTrue();
+        user.GoogleSubjectId.ShouldBeNull();
+        user.PasswordHash.ShouldNotBeNullOrWhiteSpace();
         _allowedEmailRepository.Verify(r => r.IsAllowedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task RegisterWithPasswordAsync_NotAllowListed_ReturnsDeniedWithoutCreatingUser()
+    public async Task RegisterWithPasswordAsync_NotAllowListed_ThrowsWithoutCreatingUser()
     {
         _userRepository
             .Setup(r => r.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -221,11 +220,11 @@ public class UserProvisioningServiceTests
             .Setup(r => r.IsAllowedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        var result = await _sut.RegisterWithPasswordAsync(
-            "stranger@example.com", "Stranger", "Str0ng!Pass", TestContext.Current.CancellationToken);
+        var exception = await Should.ThrowAsync<NotAllowListedException>(
+            () => _sut.RegisterWithPasswordAsync(
+                "stranger@example.com", "Stranger", "Str0ng!Pass", TestContext.Current.CancellationToken));
 
-        result.IsSuccess.ShouldBeFalse();
-        result.DenialCode.ShouldBe("not_allow_listed");
+        exception.Code.ShouldBe(ErrorCodes.NotAllowListed);
         _userRepository.Verify(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -245,14 +244,13 @@ public class UserProvisioningServiceTests
             .Setup(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((User u, CancellationToken _) => u);
 
-        var result = await _sut.RegisterWithPasswordAsync(
+        var user = await _sut.RegisterWithPasswordAsync(
             "allowed@example.com", "Allowed Person", "Str0ng!Pass", TestContext.Current.CancellationToken);
 
-        result.IsSuccess.ShouldBeTrue();
-        result.User!.Role.ShouldBe(UserRole.User);
-        result.User!.IsPrimaryAdministrator.ShouldBeFalse();
-        result.User!.PasswordHash.ShouldNotBe("Str0ng!Pass");
-        _passwordHasher.VerifyHashedPassword(result.User!, result.User!.PasswordHash!, "Str0ng!Pass")
+        user.Role.ShouldBe(UserRole.User);
+        user.IsPrimaryAdministrator.ShouldBeFalse();
+        user.PasswordHash.ShouldNotBe("Str0ng!Pass");
+        _passwordHasher.VerifyHashedPassword(user, user.PasswordHash!, "Str0ng!Pass")
             .ShouldBe(PasswordVerificationResult.Success);
     }
 

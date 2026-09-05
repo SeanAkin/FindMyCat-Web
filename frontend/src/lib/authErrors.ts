@@ -1,11 +1,20 @@
 import type { ApiError } from '@/api/http'
+import { getGenericErrorMessage, type ErrorMessage } from '@/lib/apiErrors'
 
-export interface AuthErrorMessage {
-  title: string
-  description: string
-}
+export type AuthErrorMessage = ErrorMessage
 
 export function getAuthErrorMessage(error: ApiError): AuthErrorMessage {
+  // Rate limiting has no error code - the 429 is the whole story - but sign-in deserves
+  // wording more specific than the generic fallback.
+  if (error.status === 429) {
+    return {
+      title: 'Too many attempts',
+      description:
+        error.message ||
+        'Please wait a moment before trying to sign in again.',
+    }
+  }
+
   switch (error.code) {
     case 'not_allow_listed':
       return {
@@ -40,9 +49,6 @@ export function getAuthErrorMessage(error: ApiError): AuthErrorMessage {
         description: error.message || 'Please try again.',
       }
     default:
-      return {
-        title: 'Something went wrong',
-        description: error.message || 'Please try again.',
-      }
+      return getGenericErrorMessage(error)
   }
 }

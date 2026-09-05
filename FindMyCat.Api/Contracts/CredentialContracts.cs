@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using FindMyCat.Core.Services;
+using FindMyCat.Core.Models;
 
 namespace FindMyCat.Api.Contracts;
 
