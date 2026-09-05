@@ -1,4 +1,4 @@
-using FindMyCat.Core.Entities;
+﻿using FindMyCat.Core.Entities;
 using FindMyCat.Core.Errors;
 using FindMyCat.Core.Models;
 using FindMyCat.Core.RepositoryContracts;
@@ -272,17 +272,16 @@ public class UserProvisioningServiceTests
             .Setup(r => r.GetByEmailAsync("cat@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
-        var result = await _sut.SignInWithPasswordAsync("cat@example.com", "Str0ng!Pass", TestContext.Current.CancellationToken);
+        var signedIn = await _sut.SignInWithPasswordAsync("cat@example.com", "Str0ng!Pass", TestContext.Current.CancellationToken);
 
-        result.IsSuccess.ShouldBeTrue();
-        result.User.ShouldBe(user);
+        signedIn.ShouldBe(user);
         _userRepository.Verify(
             r => r.UpdateLastLoginAsync(user.Id, It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
     [Fact]
-    public async Task SignInWithPasswordAsync_WrongPassword_ReturnsInvalidCredentials()
+    public async Task SignInWithPasswordAsync_WrongPassword_ThrowsInvalidCredentials()
     {
         var user = new User
         {
@@ -299,28 +298,27 @@ public class UserProvisioningServiceTests
             .Setup(r => r.GetByEmailAsync("cat@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
-        var result = await _sut.SignInWithPasswordAsync("cat@example.com", "wrong-password", TestContext.Current.CancellationToken);
+        await Should.ThrowAsync<InvalidCredentialsException>(() =>
+            _sut.SignInWithPasswordAsync("cat@example.com", "wrong-password", TestContext.Current.CancellationToken));
 
-        result.IsSuccess.ShouldBeFalse();
         _userRepository.Verify(
             r => r.UpdateLastLoginAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
     [Fact]
-    public async Task SignInWithPasswordAsync_UnknownEmail_ReturnsInvalidCredentials()
+    public async Task SignInWithPasswordAsync_UnknownEmail_ThrowsInvalidCredentials()
     {
         _userRepository
             .Setup(r => r.GetByEmailAsync("nobody@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
 
-        var result = await _sut.SignInWithPasswordAsync("nobody@example.com", "Str0ng!Pass", TestContext.Current.CancellationToken);
-
-        result.IsSuccess.ShouldBeFalse();
+        await Should.ThrowAsync<InvalidCredentialsException>(() =>
+            _sut.SignInWithPasswordAsync("nobody@example.com", "Str0ng!Pass", TestContext.Current.CancellationToken));
     }
 
     [Fact]
-    public async Task SignInWithPasswordAsync_GoogleOnlyAccount_ReturnsInvalidCredentials()
+    public async Task SignInWithPasswordAsync_GoogleOnlyAccount_ThrowsInvalidCredentials()
     {
         var googleOnlyUser = new User
         {
@@ -337,8 +335,7 @@ public class UserProvisioningServiceTests
             .Setup(r => r.GetByEmailAsync("cat@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(googleOnlyUser);
 
-        var result = await _sut.SignInWithPasswordAsync("cat@example.com", "any-password", TestContext.Current.CancellationToken);
-
-        result.IsSuccess.ShouldBeFalse();
+        await Should.ThrowAsync<InvalidCredentialsException>(() =>
+            _sut.SignInWithPasswordAsync("cat@example.com", "any-password", TestContext.Current.CancellationToken));
     }
 }

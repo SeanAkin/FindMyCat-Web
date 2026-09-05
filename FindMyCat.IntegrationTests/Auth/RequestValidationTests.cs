@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using FindMyCat.Api.Contracts;
 using FindMyCat.Api.Errors;
+using FindMyCat.Core.Entities;
 using FindMyCat.Core.Errors;
 using FindMyCat.Core.Security;
 using FindMyCat.IntegrationTests.Infrastructure;
@@ -111,14 +112,30 @@ public sealed class RequestValidationTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task Register_WithValidRequest_ReportsNoFieldErrors()
+    public async Task Register_WithValidRequest_IsAccepted()
     {
+        var email = $"{Guid.NewGuid():N}@example.com";
+        Db.AllowedEmails.Add(new AllowedEmail
+        {
+            Id = Guid.NewGuid(),
+            Email = email,
+            AddedByUserId = Guid.NewGuid(),
+            AddedAt = DateTimeOffset.UtcNow
+        });
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
         var response = await Client.PostAsJsonAsync(
             "/auth/register",
-            new RegisterRequest($"{Guid.NewGuid():N}@example.com", ValidDisplayName, ValidPassword),
+            new RegisterRequest(email, ValidDisplayName, ValidPassword),
             TestContext.Current.CancellationToken);
 
-        response.StatusCode.ShouldNotBe(HttpStatusCode.BadRequest);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var session = await response.Content.ReadFromJsonAsync<SessionResponse>(
+            JsonOptions, TestContext.Current.CancellationToken);
+
+        session.ShouldNotBeNull();
+        session.Email.ShouldBe(email);
     }
 
     private async Task<ApiError> PostRegistrationAsync(RegisterRequest request)

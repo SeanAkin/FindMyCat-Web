@@ -2,7 +2,6 @@
 using FindMyCat.Api.Contracts;
 using FindMyCat.Api.Errors;
 using FindMyCat.Core.Entities;
-using FindMyCat.Core.Errors;
 using FindMyCat.Core.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -66,14 +65,10 @@ public class AuthController(IUserProvisioningService userProvisioningService, Go
     [EnableRateLimiting("auth")]
     public async Task<ActionResult<SessionResponse>> LoginWithPassword([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
-        var result = await userProvisioningService.SignInWithPasswordAsync(request.Email, request.Password, cancellationToken);
-        if (!result.IsSuccess)
-        {
-            return Unauthorized(new ApiError(ErrorCodes.InvalidCredentials, "Incorrect email or password."));
-        }
+        var user = await userProvisioningService.SignInWithPasswordAsync(request.Email, request.Password, cancellationToken);
 
-        await SignInWithCookieAsync(result.User!);
-        return Ok(SessionResponse.FromDomain(result.User!));
+        await SignInWithCookieAsync(user);
+        return Ok(SessionResponse.FromDomain(user));
     }
 
     [HttpGet("session")]

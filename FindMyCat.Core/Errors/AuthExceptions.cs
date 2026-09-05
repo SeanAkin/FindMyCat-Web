@@ -6,6 +6,10 @@ public sealed class NotAllowListedException()
     : FindMyCatException(HttpStatusCode.Forbidden, ErrorCodes.NotAllowListed,
         "This email has not been added to the allowed list.");
 
+public sealed class InvalidCredentialsException()
+    : FindMyCatException(HttpStatusCode.Unauthorized, ErrorCodes.InvalidCredentials,
+        "Incorrect email or password.");
+
 public sealed class EmailAlreadyRegisteredException()
     : FindMyCatException(HttpStatusCode.Conflict, ErrorCodes.EmailAlreadyRegistered,
         "An account with this email already exists.");

@@ -1,4 +1,4 @@
-using FindMyCat.Core.Entities;
+﻿using FindMyCat.Core.Entities;
 using FindMyCat.Core.Errors;
 using FindMyCat.Core.Models;
 using FindMyCat.Core.RepositoryContracts;
@@ -14,9 +14,10 @@ public interface IUserProvisioningService
     Task<User> RegisterWithPasswordAsync(string email, string displayName, string password, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// The result deliberately cannot distinguish an unknown email from a wrong password.
+    /// Throws <see cref="InvalidCredentialsException"/> for an unknown email and a wrong password
+    /// alike, so a caller cannot learn which of the two it got wrong.
     /// </summary>
-    Task<PasswordSignInResult> SignInWithPasswordAsync(string email, string password, CancellationToken cancellationToken = default);
+    Task<User> SignInWithPasswordAsync(string email, string password, CancellationToken cancellationToken = default);
 }
 
 public sealed class UserProvisioningService(
@@ -88,7 +89,7 @@ public sealed class UserProvisioningService(
             email, displayName, password, UserRole.User, isPrimaryAdministrator: false, cancellationToken);
     }
 
-    public async Task<PasswordSignInResult> SignInWithPasswordAsync(
+    public async Task<User> SignInWithPasswordAsync(
         string email, string password, CancellationToken cancellationToken = default)
     {
         email = EmailNormalizer.Normalize(email);
@@ -96,13 +97,13 @@ public sealed class UserProvisioningService(
         var user = await userRepository.GetByEmailAsync(email, cancellationToken);
         if (user is null || user.PasswordHash is null)
         {
-            return PasswordSignInResult.InvalidCredentials();
+            throw new InvalidCredentialsException();
         }
 
         var verification = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password);
         if (verification == PasswordVerificationResult.Failed)
         {
-            return PasswordSignInResult.InvalidCredentials();
+            throw new InvalidCredentialsException();
         }
 
         if (verification == PasswordVerificationResult.SuccessRehashNeeded)
@@ -112,7 +113,7 @@ public sealed class UserProvisioningService(
         }
 
         await userRepository.UpdateLastLoginAsync(user.Id, DateTimeOffset.UtcNow, cancellationToken);
-        return PasswordSignInResult.Success(user);
+        return user;
     }
 
     private async Task RequireAllowListedAsync(string email, CancellationToken cancellationToken)
