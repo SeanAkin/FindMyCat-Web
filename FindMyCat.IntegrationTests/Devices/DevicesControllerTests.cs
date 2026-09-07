@@ -1,9 +1,9 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using FindMyCat.Api.Contracts;
-using FindMyCat.Core.Entities;
-using FindMyCat.Core.Services.Hologram;
-using FindMyCat.Core.Services.Traccar;
+using FindMyCat.Api.Errors;
+using FindMyCat.Core.Errors;
+using FindMyCat.Core.Integrations.Traccar;
 using FindMyCat.IntegrationTests.Infrastructure;
 
 namespace FindMyCat.IntegrationTests.Devices;
@@ -34,8 +34,8 @@ public sealed class DevicesControllerTests : IntegrationTestBase
         var response = await client.GetAsync("/api/devices", TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
-        var body = await response.Content.ReadFromJsonAsync<TraccarErrorResponse>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("traccar_not_configured");
+        var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
+        body!.Code.ShouldBe(ErrorCodes.TraccarNotConfigured);
     }
 
     [Fact]
@@ -70,13 +70,13 @@ public sealed class DevicesControllerTests : IntegrationTestBase
         var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
         using var client = CreateAuthenticatedClient(user);
         await ConfigureTraccarTokenAsync();
-        Traccar.ThrowInstead = new TraccarUpstreamException("rejected", credentialRejected: true);
+        Traccar.ThrowInstead = new TraccarCredentialRejectedException("rejected");
 
         var response = await client.GetAsync("/api/devices", TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
-        var body = await response.Content.ReadFromJsonAsync<TraccarErrorResponse>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("traccar_credential_rejected");
+        var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
+        body!.Code.ShouldBe(ErrorCodes.TraccarCredentialRejected);
     }
 
     [Fact]
@@ -85,13 +85,13 @@ public sealed class DevicesControllerTests : IntegrationTestBase
         var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
         using var client = CreateAuthenticatedClient(user);
         await ConfigureTraccarTokenAsync();
-        Traccar.ThrowInstead = new TraccarUpstreamException("boom", credentialRejected: false);
+        Traccar.ThrowInstead = new TraccarUnavailableException("boom");
 
         var response = await client.GetAsync("/api/devices", TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadGateway);
-        var body = await response.Content.ReadFromJsonAsync<TraccarErrorResponse>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("traccar_unavailable");
+        var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
+        body!.Code.ShouldBe(ErrorCodes.TraccarUnavailable);
     }
 
     [Fact]
@@ -123,6 +123,26 @@ public sealed class DevicesControllerTests : IntegrationTestBase
         position.BatteryLevel.ShouldBe(55);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("?from=2025-01-01T00:00:00Z")]
+    [InlineData("?to=2025-01-02T00:00:00Z")]
+    public async Task History_names_the_end_of_the_range_that_was_not_supplied(string query)
+    {
+        var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
+        using var client = CreateAuthenticatedClient(user);
+
+        var response = await client.GetAsync(
+            $"/api/devices/1/history{query}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
+        body!.Code.ShouldBeNull();
+        body.Errors.ShouldNotBeNull();
+        body.Errors.ShouldNotBeEmpty();
+        body.Errors.Keys.ShouldBeSubsetOf(["from", "to"]);
+    }
+
     [Fact]
     public async Task History_rejects_inverted_range()
     {
@@ -134,8 +154,8 @@ public sealed class DevicesControllerTests : IntegrationTestBase
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        var body = await response.Content.ReadFromJsonAsync<TraccarErrorResponse>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("invalid_range");
+        var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
+        body!.Code.ShouldBe(ErrorCodes.InvalidRange);
     }
 
     [Fact]
@@ -149,8 +169,8 @@ public sealed class DevicesControllerTests : IntegrationTestBase
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        var body = await response.Content.ReadFromJsonAsync<TraccarErrorResponse>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("range_too_large");
+        var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
+        body!.Code.ShouldBe(ErrorCodes.RangeTooLarge);
     }
 
     [Fact]
@@ -184,8 +204,8 @@ public sealed class DevicesControllerTests : IntegrationTestBase
         var response = await client.PostAsync("/api/devices/1/ping", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
-        var body = await response.Content.ReadFromJsonAsync<TraccarErrorResponse>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("hologram_not_configured");
+        var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
+        body!.Code.ShouldBe(ErrorCodes.HologramNotConfigured);
     }
 
     [Fact]
@@ -216,8 +236,8 @@ public sealed class DevicesControllerTests : IntegrationTestBase
         var response = await client.PostAsync("/api/devices/1/lost", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
-        var body = await response.Content.ReadFromJsonAsync<TraccarErrorResponse>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("hologram_device_not_found");
+        var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
+        body!.Code.ShouldBe(ErrorCodes.HologramDeviceNotFound);
     }
 
     [Fact]
@@ -228,13 +248,13 @@ public sealed class DevicesControllerTests : IntegrationTestBase
         await ConfigureTraccarTokenAsync();
         await ConfigureHologramKeyAsync();
         Traccar.Devices = [new TraccarDevice(1, "Test Collar", "unique-1", "online", null, false, null)];
-        Hologram.ThrowInstead = new HologramUpstreamException("rejected", credentialRejected: true);
+        Hologram.ThrowInstead = new HologramCredentialRejectedException("rejected");
 
         var response = await client.PostAsync("/api/devices/1/active", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
-        var body = await response.Content.ReadFromJsonAsync<TraccarErrorResponse>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("hologram_credential_rejected");
+        var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
+        body!.Code.ShouldBe(ErrorCodes.HologramCredentialRejected);
     }
 
     [Fact]
@@ -245,32 +265,13 @@ public sealed class DevicesControllerTests : IntegrationTestBase
         await ConfigureTraccarTokenAsync();
         await ConfigureHologramKeyAsync();
         Traccar.Devices = [new TraccarDevice(1, "Test Collar", "unique-1", "online", null, false, null)];
-        Hologram.ThrowInstead = new HologramUpstreamException("boom", credentialRejected: false);
+        Hologram.ThrowInstead = new HologramUnavailableException("boom");
 
         var response = await client.PostAsync("/api/devices/1/active", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadGateway);
-        var body = await response.Content.ReadFromJsonAsync<TraccarErrorResponse>(TestContext.Current.CancellationToken);
-        body!.Code.ShouldBe("hologram_unavailable");
+        var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
+        body!.Code.ShouldBe(ErrorCodes.HologramUnavailable);
     }
 
-    private async Task ConfigureTraccarTokenAsync()
-    {
-        var admin = await CreateUserAsync(UserRole.Administrator, cancellationToken: TestContext.Current.CancellationToken);
-        using var adminClient = CreateAuthenticatedClient(admin);
-
-        var response = await adminClient.PutAsJsonAsync(
-            "/api/credentials/traccar", new SetTraccarCredentialRequest("stored-token"), TestContext.Current.CancellationToken);
-        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-    }
-
-    private async Task ConfigureHologramKeyAsync()
-    {
-        var admin = await CreateUserAsync(UserRole.Administrator, cancellationToken: TestContext.Current.CancellationToken);
-        using var adminClient = CreateAuthenticatedClient(admin);
-
-        var response = await adminClient.PutAsJsonAsync(
-            "/api/credentials/hologram", new SetHologramCredentialRequest("stored-key"), TestContext.Current.CancellationToken);
-        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-    }
 }

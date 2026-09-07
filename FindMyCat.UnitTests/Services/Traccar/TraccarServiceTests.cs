@@ -1,5 +1,6 @@
+using FindMyCat.Core.Errors;
+using FindMyCat.Core.Integrations.Traccar;
 using FindMyCat.Core.Services;
-using FindMyCat.Core.Services.Traccar;
 using Moq;
 
 namespace FindMyCat.UnitTests.Services.Traccar;

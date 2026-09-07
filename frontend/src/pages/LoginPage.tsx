@@ -1,12 +1,12 @@
 import { type FormEvent, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { login, register } from '@/api/auth'
-import { toApiError } from '@/api/http'
+import { ApiError, toApiError } from '@/api/http'
 import { Logo } from '@/components/Logo'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { type AuthErrorMessage, getAuthErrorMessage } from '@/lib/authErrors'
+import { getAuthErrorMessage } from '@/lib/authErrors'
 import { useAuthStore } from '@/stores/authStore'
 
 type Mode = 'signin' | 'register'
@@ -14,7 +14,9 @@ type Mode = 'signin' | 'register'
 export function LoginPage() {
   const status = useAuthStore((state) => state.status)
   const signIn = useAuthStore((state) => state.signIn)
-  const googleEnabled = useAuthStore((state) => state.providers.includes('Google'))
+  const googleEnabled = useAuthStore((state) =>
+    state.providers.includes('Google'),
+  )
   const [searchParams] = useSearchParams()
   const redirectError = searchParams.get('error')
 
@@ -23,7 +25,11 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formError, setFormError] = useState<AuthErrorMessage | null>(null)
+  const [submitError, setSubmitError] = useState<ApiError | null>(null)
+
+  // Derived during render rather than mirrored into state: one error drives both the
+  // banner and the per-field messages.
+  const formError = submitError ? getAuthErrorMessage(submitError) : null
 
   if (status === 'authenticated') {
     return <Navigate to="/" replace />
@@ -49,7 +55,7 @@ export function LoginPage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setFormError(null)
+    setSubmitError(null)
     setIsSubmitting(true)
     try {
       const session =
@@ -58,15 +64,19 @@ export function LoginPage() {
           : await register(email, password, displayName)
       signIn(session)
     } catch (err) {
-      setFormError(getAuthErrorMessage(toApiError(err)))
+      setSubmitError(toApiError(err))
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  const displayNameErrors = submitError?.errorsFor('displayName') ?? []
+  const emailErrors = submitError?.errorsFor('email') ?? []
+  const passwordErrors = submitError?.errorsFor('password') ?? []
+
   const switchMode = (nextMode: Mode) => {
     setMode(nextMode)
-    setFormError(null)
+    setSubmitError(null)
   }
 
   return (
@@ -109,7 +119,12 @@ export function LoginPage() {
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
               placeholder="Jane Doe"
+              aria-invalid={displayNameErrors.length > 0}
+              aria-describedby={
+                displayNameErrors.length > 0 ? 'displayName-errors' : undefined
+              }
             />
+            <FieldErrors id="displayName-errors" messages={displayNameErrors} />
           </label>
         )}
         <label className="flex flex-col gap-1 text-sm">
@@ -120,7 +135,12 @@ export function LoginPage() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="name@example.com"
+            aria-invalid={emailErrors.length > 0}
+            aria-describedby={
+              emailErrors.length > 0 ? 'email-errors' : undefined
+            }
           />
+          <FieldErrors id="email-errors" messages={emailErrors} />
         </label>
         <label className="flex flex-col gap-1 text-sm">
           Password
@@ -131,13 +151,21 @@ export function LoginPage() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="••••••••"
+            aria-invalid={passwordErrors.length > 0}
+            aria-describedby={
+              passwordErrors.length > 0 ? 'password-errors' : undefined
+            }
           />
+          {passwordErrors.length > 0 ? (
+            <FieldErrors id="password-errors" messages={passwordErrors} />
+          ) : (
+            mode === 'register' && (
+              <p className="text-xs text-muted-foreground">
+                8-64 characters, with one uppercase letter and one symbol.
+              </p>
+            )
+          )}
         </label>
-        {mode === 'register' && (
-          <p className="text-xs text-muted-foreground">
-            8-64 characters, with one uppercase letter and one symbol.
-          </p>
-        )}
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting
             ? mode === 'signin'
@@ -173,5 +201,28 @@ export function LoginPage() {
         </>
       )}
     </div>
+  )
+}
+
+type FieldErrorsProps = {
+  id: string
+  messages?: readonly string[]
+}
+
+function FieldErrors({ id, messages }: FieldErrorsProps) {
+  if (!messages || messages.length === 0) {
+    return null
+  }
+
+  return (
+    <ul
+      id={id}
+      aria-live="polite"
+      className="flex flex-col gap-0.5 text-xs text-destructive"
+    >
+      {messages.map((message) => (
+        <li key={message}>{message}</li>
+      ))}
+    </ul>
   )
 }

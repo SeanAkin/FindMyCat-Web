@@ -1,4 +1,7 @@
+using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
+using FindMyCat.Api.Contracts;
 using FindMyCat.Api.Json;
 using FindMyCat.Core.Entities;
 using FindMyCat.Data;
@@ -81,6 +84,26 @@ public abstract class IntegrationTestBase : IClassFixture<FindMyCatApiFactory>, 
         await Db.SaveChangesAsync(cancellationToken);
 
         return user;
+    }
+
+    protected async Task ConfigureTraccarTokenAsync()
+    {
+        var admin = await CreateUserAsync(UserRole.Administrator, cancellationToken: TestContext.Current.CancellationToken);
+        using var adminClient = CreateAuthenticatedClient(admin);
+
+        var response = await adminClient.PutAsJsonAsync(
+            "/api/credentials/traccar", new SetTraccarCredentialRequest("stored-token"), TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+    }
+
+    protected async Task ConfigureHologramKeyAsync()
+    {
+        var admin = await CreateUserAsync(UserRole.Administrator, cancellationToken: TestContext.Current.CancellationToken);
+        using var adminClient = CreateAuthenticatedClient(admin);
+
+        var response = await adminClient.PutAsJsonAsync(
+            "/api/credentials/hologram", new SetHologramCredentialRequest("stored-key"), TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     public void Dispose()

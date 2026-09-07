@@ -1,13 +1,13 @@
-using FindMyCat.Core.Services.Hologram;
-using FindMyCat.Core.Services.Traccar;
+using FindMyCat.Core.Integrations.Hologram;
+using FindMyCat.Core.Integrations.Traccar;
 using FindMyCat.Data;
 using FindMyCat.IntegrationTests.Stubs;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

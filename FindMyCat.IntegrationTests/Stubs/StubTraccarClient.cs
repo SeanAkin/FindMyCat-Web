@@ -1,4 +1,4 @@
-using FindMyCat.Core.Services.Traccar;
+using FindMyCat.Core.Integrations.Traccar;
 
 namespace FindMyCat.IntegrationTests.Stubs;
 

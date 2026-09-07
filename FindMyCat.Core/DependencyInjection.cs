@@ -1,7 +1,7 @@
 using FindMyCat.Core.Entities;
+using FindMyCat.Core.Integrations.Hologram;
+using FindMyCat.Core.Integrations.Traccar;
 using FindMyCat.Core.Services;
-using FindMyCat.Core.Services.Hologram;
-using FindMyCat.Core.Services.Traccar;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 

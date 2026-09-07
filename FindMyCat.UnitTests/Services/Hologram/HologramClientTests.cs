@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
-using FindMyCat.Core.Services.Hologram;
+using FindMyCat.Core.Errors;
+using FindMyCat.Core.Integrations.Hologram;
 using FindMyCat.UnitTests.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -75,36 +76,43 @@ public class HologramClientTests
     }
 
     [Fact]
-    public async Task Forbidden_response_throws_with_credential_rejected()
+    public async Task Forbidden_response_throws_credential_rejected()
     {
         var handler = StubHttpMessageHandler.ReturningJson(_ =>
             (HttpStatusCode.Forbidden, """{"success":false,"error":"Invalid API Key"}"""));
         var client = CreateClient(handler);
 
-        var ex = await Should.ThrowAsync<HologramUpstreamException>(() => client.FindDeviceIdByImeiAsync("bad", "name", TestContext.Current.CancellationToken));
+        var ex = await Should.ThrowAsync<HologramCredentialRejectedException>(
+            () => client.FindDeviceIdByImeiAsync("bad", "name", TestContext.Current.CancellationToken));
 
-        ex.CredentialRejected.ShouldBeTrue();
+        ex.Code.ShouldBe(ErrorCodes.HologramCredentialRejected);
+        ex.LogDetail.ShouldBe("Invalid API Key");
     }
 
     [Fact]
-    public async Task Application_level_failure_throws_without_credential_rejected()
+    public async Task Application_level_failure_throws_unavailable()
     {
         var handler = StubHttpMessageHandler.ReturningJson(_ =>
             (HttpStatusCode.BadRequest, """{"success":false,"error":"Some device IDs are invalid"}"""));
         var client = CreateClient(handler);
 
-        var ex = await Should.ThrowAsync<HologramUpstreamException>(() => client.SendMessageAsync("key", 1, "ping", TestContext.Current.CancellationToken));
+        const string upstreamWording = "Some device IDs are invalid";
 
-        ex.CredentialRejected.ShouldBeFalse();
-        ex.Message.ShouldBe("Some device IDs are invalid");
+        var ex = await Should.ThrowAsync<HologramUnavailableException>(
+            () => client.SendMessageAsync("key", 1, "ping", TestContext.Current.CancellationToken));
+
+        ex.Code.ShouldBe(ErrorCodes.HologramUnavailable);
+        ex.LogDetail.ShouldBe(upstreamWording);
+        ex.Message.ShouldNotContain(upstreamWording);
     }
 
     [Fact]
-    public async Task Malformed_json_throws_upstream_exception()
+    public async Task Malformed_json_throws_unavailable()
     {
         var handler = StubHttpMessageHandler.ReturningJson(_ => (HttpStatusCode.OK, "not json"));
         var client = CreateClient(handler);
 
-        await Should.ThrowAsync<HologramUpstreamException>(() => client.FindDeviceIdByImeiAsync("key", "name", TestContext.Current.CancellationToken));
+        await Should.ThrowAsync<HologramUnavailableException>(
+            () => client.FindDeviceIdByImeiAsync("key", "name", TestContext.Current.CancellationToken));
     }
 }
