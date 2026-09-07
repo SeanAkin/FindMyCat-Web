@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc.Filters;
 
@@ -5,11 +6,13 @@ namespace FindMyCat.Api.Validation;
 
 internal sealed class RequestValidationFilter(IServiceProvider services) : IAsyncActionFilter
 {
+    private static readonly ConcurrentDictionary<Type, Type> ValidatorInterfaces = new();
+
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
         foreach (var argument in context.ActionArguments.Values.OfType<object>())
         {
-            if (services.GetService(typeof(IValidator<>).MakeGenericType(argument.GetType())) is not IValidator validator)
+            if (services.GetService(ValidatorInterfaceFor(argument)) is not IValidator validator)
             {
                 continue;
             }
@@ -25,4 +28,7 @@ internal sealed class RequestValidationFilter(IServiceProvider services) : IAsyn
 
         await next();
     }
+
+    private static Type ValidatorInterfaceFor(object argument) =>
+        ValidatorInterfaces.GetOrAdd(argument.GetType(), static argumentType => typeof(IValidator<>).MakeGenericType(argumentType));
 }
