@@ -11,10 +11,7 @@ internal sealed class FindMyCatExceptionHandler(ILogger<FindMyCatExceptionHandle
     {
         var (statusCode, error, logDetail) = exception switch
         {
-            ValidationException invalid => (
-                StatusCodes.Status400BadRequest,
-                ValidationErrorFactory.FromFailures([.. invalid.Errors]),
-                (string?)null),
+            ValidationException invalid => (StatusCodes.Status400BadRequest, ValidationErrorFactory.FromFailures([.. invalid.Errors]), (string?)null),
             FindMyCatException known => ((int)known.Status, new ApiError(known.Code, known.Message), known.LogDetail),
             _ => (StatusCodes.Status500InternalServerError, StatusCodeErrors.For(StatusCodes.Status500InternalServerError), (string?)null)
         };

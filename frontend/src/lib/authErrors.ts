@@ -4,8 +4,6 @@ import { getGenericErrorMessage, type ErrorMessage } from '@/lib/apiErrors'
 export type AuthErrorMessage = ErrorMessage
 
 export function getAuthErrorMessage(error: ApiError): AuthErrorMessage {
-  // Rate limiting has no error code - the 429 is the whole story - but sign-in deserves
-  // wording more specific than the generic fallback.
   if (error.status === 429) {
     return {
       title: 'Too many attempts',

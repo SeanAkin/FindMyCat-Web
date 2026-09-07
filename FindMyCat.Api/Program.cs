@@ -37,8 +37,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>()
 builder.Services.AddControllers(options => options.Filters.Add<RequestValidationFilter>())
     .AddJsonOptions(options => ApiJsonOptions.Configure(options.JsonSerializerOptions));
 
-builder.Services.Configure<ApiBehaviorOptions>(options =>
-    options.InvalidModelStateResponseFactory = DescribeRequestThatCouldNotBeBound);
+builder.Services.Configure<ApiBehaviorOptions>(opt => opt.InvalidModelStateResponseFactory = DescribeRequestThatCouldNotBeBound);
 
 builder.Services.AddExceptionHandler<FindMyCatExceptionHandler>();
 builder.Services.AddEndpointsApiExplorer();

@@ -10,8 +10,7 @@ internal static class ValidationErrorFactory
     public static ApiError FromFailures(IReadOnlyCollection<ValidationFailure> failures) =>
         new(DomainCodeFor(failures), InvalidRequest, FieldsFor(failures));
 
-    private static IReadOnlyDictionary<string, IReadOnlyList<string>>? FieldsFor(
-        IEnumerable<ValidationFailure> failures)
+    private static IReadOnlyDictionary<string, IReadOnlyList<string>>? FieldsFor(IEnumerable<ValidationFailure> failures)
     {
         var fields = failures
             .GroupBy(failure => failure.PropertyName, StringComparer.Ordinal)
