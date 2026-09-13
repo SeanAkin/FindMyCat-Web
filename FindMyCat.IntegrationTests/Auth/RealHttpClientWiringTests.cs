@@ -1,5 +1,5 @@
-using FindMyCat.Core.Services.Hologram;
-using FindMyCat.Core.Services.Traccar;
+using FindMyCat.Core.Integrations.Hologram;
+using FindMyCat.Core.Integrations.Traccar;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FindMyCat.IntegrationTests.Auth;

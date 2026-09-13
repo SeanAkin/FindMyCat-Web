@@ -1,5 +1,5 @@
 using System.Security.Cryptography;
-using FindMyCat.Core.Services;
+using FindMyCat.Core.Security;
 
 namespace FindMyCat.UnitTests.Services;
 

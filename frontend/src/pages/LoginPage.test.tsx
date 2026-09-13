@@ -179,4 +179,78 @@ describe('LoginPage', () => {
     )
     expect(useAuthStore.getState().status).toBe('authenticated')
   })
+
+  it('lists every unmet password requirement separately', async () => {
+    useAuthStore.setState({ status: 'unauthenticated', user: null })
+    vi.mocked(register).mockRejectedValue(
+      new ApiError(
+        400,
+        'weak_password',
+        'That password does not meet the requirements.',
+        {
+          password: [
+            'Password must be at least 8 characters long.',
+            'Password must contain at least one uppercase letter.',
+            'Password must contain at least one symbol.',
+          ],
+        },
+      ),
+    )
+    const user = userEvent.setup()
+    renderLoginPage('/login')
+
+    await user.click(
+      screen.getByRole('button', { name: /don't have an account/i }),
+    )
+    await user.type(screen.getByPlaceholderText('Jane Doe'), 'New Person')
+    await user.type(
+      screen.getByPlaceholderText('name@example.com'),
+      'new@example.com',
+    )
+    await user.type(screen.getByPlaceholderText('••••••••'), 'weak')
+    await user.click(screen.getByRole('button', { name: 'Create account' }))
+
+    expect(
+      await screen.findByText('Password must be at least 8 characters long.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Password must contain at least one uppercase letter.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Password must contain at least one symbol.'),
+    ).toBeInTheDocument()
+
+    // The static hint gives way to the requirements actually missed.
+    expect(screen.queryByText(/8-64 characters/)).not.toBeInTheDocument()
+  })
+
+  it('shows messages for several rejected fields at once', async () => {
+    useAuthStore.setState({ status: 'unauthenticated', user: null })
+    vi.mocked(register).mockRejectedValue(
+      new ApiError(400, null, 'The request was not valid.', {
+        displayName: ['The DisplayName field is required.'],
+        password: ['Password must contain at least one symbol.'],
+      }),
+    )
+    const user = userEvent.setup()
+    renderLoginPage('/login')
+
+    await user.click(
+      screen.getByRole('button', { name: /don't have an account/i }),
+    )
+    await user.type(screen.getByPlaceholderText('Jane Doe'), ' ')
+    await user.type(
+      screen.getByPlaceholderText('name@example.com'),
+      'new@example.com',
+    )
+    await user.type(screen.getByPlaceholderText('••••••••'), 'Str0ngPass')
+    await user.click(screen.getByRole('button', { name: 'Create account' }))
+
+    expect(
+      await screen.findByText('The DisplayName field is required.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Password must contain at least one symbol.'),
+    ).toBeInTheDocument()
+  })
 })

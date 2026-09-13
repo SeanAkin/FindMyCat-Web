@@ -1,8 +1,7 @@
 import type { ApiError } from '@/api/http'
+import { getGenericErrorMessage, type ErrorMessage } from '@/lib/apiErrors'
 
-export interface DeviceErrorMessage {
-  title: string
-  description: string
+export interface DeviceErrorMessage extends ErrorMessage {
   /** "setup" is a first-time-configuration nudge, not a failure; renders less alarming. */
   variant: 'setup' | 'error'
   adminActionable: boolean
@@ -66,6 +65,15 @@ export function getDeviceErrorMessage(error: ApiError): DeviceErrorMessage {
         description:
           'Could not reach the collar command service. Try again in a moment.',
       }
+    case 'device_position_not_found':
+      return {
+        variant: 'error',
+        adminActionable: false,
+        title: 'No location reported yet',
+        description:
+          error.message ||
+          "This collar hasn't reported a position yet. Try pinging it.",
+      }
     case 'invalid_range':
     case 'range_too_large':
       return {
@@ -76,11 +84,12 @@ export function getDeviceErrorMessage(error: ApiError): DeviceErrorMessage {
       }
     default:
       return {
+        ...getGenericErrorMessage(
+          error,
+          'Failed to load device data. Please try again.',
+        ),
         variant: 'error',
         adminActionable: false,
-        title: 'Something went wrong',
-        description:
-          error.message || 'Failed to load device data. Please try again.',
       }
   }
 }

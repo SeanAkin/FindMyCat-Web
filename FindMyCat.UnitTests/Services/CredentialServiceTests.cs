@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using FindMyCat.Core.Entities;
+using FindMyCat.Core.Errors;
 using FindMyCat.Core.RepositoryContracts;
+using FindMyCat.Core.Security;
 using FindMyCat.Core.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -88,19 +90,19 @@ public class CredentialServiceTests
     }
 
     [Fact]
-    public async Task DeleteTraccarTokenAsync_ReturnsFalse_WhenNothingConfigured()
+    public async Task DeleteTraccarTokenAsync_Throws_WhenNothingConfigured()
     {
         _repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync((SharedCredential?)null);
 
-        var removed = await _sut.DeleteTraccarTokenAsync(TestContext.Current.CancellationToken);
+        await Should.ThrowAsync<CredentialNotConfiguredException>(
+            () => _sut.DeleteTraccarTokenAsync(TestContext.Current.CancellationToken));
 
-        removed.ShouldBeFalse();
         _repository.Verify(r => r.UpsertAsync(It.IsAny<SharedCredential>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task DeleteHologramKeyAsync_ClearsOnlyHologram_AndReturnsTrue()
+    public async Task DeleteHologramKeyAsync_ClearsOnlyHologram()
     {
         var traccar = _protector.Encrypt("traccar");
         _repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
@@ -115,9 +117,8 @@ public class CredentialServiceTests
             .Callback<SharedCredential, CancellationToken>((c, _) => saved = c)
             .Returns(Task.CompletedTask);
 
-        var removed = await _sut.DeleteHologramKeyAsync(TestContext.Current.CancellationToken);
+        await _sut.DeleteHologramKeyAsync(TestContext.Current.CancellationToken);
 
-        removed.ShouldBeTrue();
         saved.ShouldNotBeNull();
         saved.HologramApiKeyProtected.ShouldBeNull();
         saved.TraccarApiTokenProtected.ShouldBe(traccar);

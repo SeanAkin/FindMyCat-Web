@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using FindMyCat.Core.Services.Hologram;
+using FindMyCat.Core.Integrations.Hologram;
 using FindMyCat.UnitTests.Infrastructure;
 using Json.Schema;
 using JsonPointer = Json.Pointer.JsonPointer;

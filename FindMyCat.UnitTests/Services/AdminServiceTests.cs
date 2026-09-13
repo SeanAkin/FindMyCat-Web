@@ -1,4 +1,5 @@
-using FindMyCat.Core.Entities;
+﻿using FindMyCat.Core.Entities;
+using FindMyCat.Core.Errors;
 using FindMyCat.Core.RepositoryContracts;
 using FindMyCat.Core.Services;
 using Moq;
@@ -38,7 +39,7 @@ public class AdminServiceTests
     }
 
     [Fact]
-    public async Task RemoveAllowedEmailAsync_ReturnsNotFound_WhenNothingWasRemoved()
+    public async Task RemoveAllowedEmailAsync_ThrowsNotFound_WhenNothingWasRemoved()
     {
         _userRepository
             .Setup(r => r.GetByEmailAsync("missing@example.com", It.IsAny<CancellationToken>()))
@@ -47,13 +48,12 @@ public class AdminServiceTests
             .Setup(r => r.RemoveAsync("missing@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        var result = await _sut.RemoveAllowedEmailAsync("missing@example.com", TestContext.Current.CancellationToken);
-
-        result.ShouldBe(RemoveAllowedEmailResult.NotFound);
+        await Should.ThrowAsync<AllowedEmailNotFoundException>(
+            () => _sut.RemoveAllowedEmailAsync("missing@example.com", TestContext.Current.CancellationToken));
     }
 
     [Fact]
-    public async Task RemoveAllowedEmailAsync_ReturnsRemoved_WhenSomethingWasRemoved()
+    public async Task RemoveAllowedEmailAsync_WithdrawsAPendingInvite_WhenNoAccountExists()
     {
         _userRepository
             .Setup(r => r.GetByEmailAsync("friend@example.com", It.IsAny<CancellationToken>()))
@@ -62,14 +62,19 @@ public class AdminServiceTests
             .Setup(r => r.RemoveAsync("friend@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var result = await _sut.RemoveAllowedEmailAsync("friend@example.com", TestContext.Current.CancellationToken);
+        await Should.NotThrowAsync(
+            () => _sut.RemoveAllowedEmailAsync("friend@example.com", TestContext.Current.CancellationToken));
 
-        result.ShouldBe(RemoveAllowedEmailResult.Removed);
-        _userRepository.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _allowedEmailRepository.Verify(
+            r => r.RemoveAsync("friend@example.com", It.IsAny<CancellationToken>()), Times.Once);
+        _userRepository.Verify(
+            r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    [Fact]
-    public async Task RemoveAllowedEmailAsync_AlsoDeletesTheMatchingUserAccount()
+    [Theory]
+    [InlineData(true)]  // the invite row is still there and goes along with the account
+    [InlineData(false)] // the invite row has already gone; the account must still be deleted
+    public async Task RemoveAllowedEmailAsync_AlsoDeletesTheMatchingUserAccount(bool allowListRowRemoved)
     {
         var user = new User
         {
@@ -85,14 +90,16 @@ public class AdminServiceTests
             .ReturnsAsync(user);
         _allowedEmailRepository
             .Setup(r => r.RemoveAsync("friend@example.com", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .ReturnsAsync(allowListRowRemoved);
         _userRepository
             .Setup(r => r.DeleteAsync(user.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var result = await _sut.RemoveAllowedEmailAsync("friend@example.com", TestContext.Current.CancellationToken);
+        // Deleting the account counts as a removal on its own, so this must not report the email
+        // as missing even when there was no invite row left to remove.
+        await Should.NotThrowAsync(
+            () => _sut.RemoveAllowedEmailAsync("friend@example.com", TestContext.Current.CancellationToken));
 
-        result.ShouldBe(RemoveAllowedEmailResult.Removed);
         _userRepository.Verify(r => r.DeleteAsync(user.Id, It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -111,21 +118,21 @@ public class AdminServiceTests
                 IsPrimaryAdministrator = true
             });
 
-        var result = await _sut.RemoveAllowedEmailAsync("founder@example.com", TestContext.Current.CancellationToken);
+        await Should.ThrowAsync<PrimaryAdministratorProtectedException>(
+            () => _sut.RemoveAllowedEmailAsync("founder@example.com", TestContext.Current.CancellationToken));
 
-        result.ShouldBe(RemoveAllowedEmailResult.PrimaryAdministratorProtected);
         _allowedEmailRepository.Verify(r => r.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task SetUserRoleAsync_ReturnsUserNotFound_WhenUserDoesNotExist()
+    public async Task SetUserRoleAsync_ThrowsUserNotFound_WhenUserDoesNotExist()
     {
         var userId = Guid.NewGuid();
         _userRepository.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
 
-        var result = await _sut.SetUserRoleAsync(userId, UserRole.Administrator, TestContext.Current.CancellationToken);
+        await Should.ThrowAsync<UserNotFoundException>(
+            () => _sut.SetUserRoleAsync(userId, UserRole.Administrator, TestContext.Current.CancellationToken));
 
-        result.ShouldBe(SetUserRoleResult.UserNotFound);
         _userRepository.Verify(r => r.UpdateRoleAsync(It.IsAny<Guid>(), It.IsAny<UserRole>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -144,9 +151,8 @@ public class AdminServiceTests
                 IsPrimaryAdministrator = false
             });
 
-        var result = await _sut.SetUserRoleAsync(userId, UserRole.Administrator, TestContext.Current.CancellationToken);
+        await _sut.SetUserRoleAsync(userId, UserRole.Administrator, TestContext.Current.CancellationToken);
 
-        result.ShouldBe(SetUserRoleResult.Success);
         _userRepository.Verify(r => r.UpdateRoleAsync(userId, UserRole.Administrator, It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -165,9 +171,8 @@ public class AdminServiceTests
                 IsPrimaryAdministrator = false
             });
 
-        var result = await _sut.SetUserRoleAsync(userId, UserRole.User, TestContext.Current.CancellationToken);
+        await _sut.SetUserRoleAsync(userId, UserRole.User, TestContext.Current.CancellationToken);
 
-        result.ShouldBe(SetUserRoleResult.Success);
         _userRepository.Verify(r => r.UpdateRoleAsync(userId, UserRole.User, It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -186,9 +191,9 @@ public class AdminServiceTests
                 IsPrimaryAdministrator = true
             });
 
-        var result = await _sut.SetUserRoleAsync(userId, UserRole.User, TestContext.Current.CancellationToken);
+        await Should.ThrowAsync<PrimaryAdministratorProtectedException>(
+            () => _sut.SetUserRoleAsync(userId, UserRole.User, TestContext.Current.CancellationToken));
 
-        result.ShouldBe(SetUserRoleResult.PrimaryAdministratorProtected);
         _userRepository.Verify(r => r.UpdateRoleAsync(It.IsAny<Guid>(), It.IsAny<UserRole>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

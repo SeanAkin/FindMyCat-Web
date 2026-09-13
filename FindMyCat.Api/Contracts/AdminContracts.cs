@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using FindMyCat.Core.Entities;
 
 namespace FindMyCat.Api.Contracts;
@@ -8,7 +7,7 @@ public sealed record AllowedEmailResponse(string Email, DateTimeOffset AddedAt)
     public static AllowedEmailResponse FromDomain(AllowedEmail email) => new(email.Email, email.AddedAt);
 }
 
-public sealed record AddAllowedEmailRequest([Required][EmailAddress][StringLength(320)] string Email);
+public sealed record AddAllowedEmailRequest(string Email);
 
 public sealed record UserResponse(
     Guid Id,
@@ -29,6 +28,6 @@ public sealed record UserResponse(
         user.LastLoginAt);
 }
 
-public sealed record UpdateUserRoleRequest([Required] UserRole Role);
+public sealed record UpdateUserRoleRequest(UserRole Role);
 
-public sealed record AdminErrorResponse(string Code, string Message);
+ 

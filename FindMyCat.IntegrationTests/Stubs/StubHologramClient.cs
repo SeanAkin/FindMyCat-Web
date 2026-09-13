@@ -1,4 +1,4 @@
-using FindMyCat.Core.Services.Hologram;
+using FindMyCat.Core.Integrations.Hologram;
 
 namespace FindMyCat.IntegrationTests.Stubs;
 

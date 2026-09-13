@@ -32,16 +32,8 @@ public class AdminController(IAdminService adminService) : ControllerBase
     [HttpDelete("allowed-emails/{email}")]
     public async Task<IActionResult> RemoveAllowedEmail(string email, CancellationToken cancellationToken)
     {
-        var result = await adminService.RemoveAllowedEmailAsync(email, cancellationToken);
-        return result switch
-        {
-            RemoveAllowedEmailResult.Removed => NoContent(),
-            RemoveAllowedEmailResult.NotFound => NotFound(),
-            RemoveAllowedEmailResult.PrimaryAdministratorProtected => Conflict(new AdminErrorResponse(
-                "primary_administrator_protected",
-                "The original administrator account's email cannot be removed from the allow-list.")),
-            _ => throw new InvalidOperationException($"Unhandled {nameof(RemoveAllowedEmailResult)}: {result}.")
-        };
+        await adminService.RemoveAllowedEmailAsync(email, cancellationToken);
+        return NoContent();
     }
 
     [HttpGet("users")]
@@ -54,15 +46,7 @@ public class AdminController(IAdminService adminService) : ControllerBase
     [HttpPut("users/{id:guid}/role")]
     public async Task<IActionResult> SetUserRole(Guid id, [FromBody] UpdateUserRoleRequest request, CancellationToken cancellationToken)
     {
-        var result = await adminService.SetUserRoleAsync(id, request.Role, cancellationToken);
-        return result switch
-        {
-            SetUserRoleResult.Success => NoContent(),
-            SetUserRoleResult.UserNotFound => NotFound(),
-            SetUserRoleResult.PrimaryAdministratorProtected => Conflict(new AdminErrorResponse(
-                "primary_administrator_protected",
-                "The original administrator account's role cannot be changed.")),
-            _ => throw new InvalidOperationException($"Unhandled {nameof(SetUserRoleResult)}: {result}.")
-        };
+        await adminService.SetUserRoleAsync(id, request.Role, cancellationToken);
+        return NoContent();
     }
 }

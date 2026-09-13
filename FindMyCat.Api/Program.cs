@@ -1,27 +1,45 @@
-using System.Net;
+﻿using System.Net;
 using System.Security.Authentication;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 using FindMyCat.Api.Auth;
-using FindMyCat.Api.Contracts;
+using FindMyCat.Api.Errors;
 using FindMyCat.Api.Json;
+using FindMyCat.Api.Validation;
 using FindMyCat.Core;
+using FindMyCat.Core.Entities;
+using FindMyCat.Core.Errors;
+using FindMyCat.Core.Integrations.Hologram;
+using FindMyCat.Core.Integrations.Traccar;
+using FindMyCat.Core.Models;
 using FindMyCat.Core.RepositoryContracts;
+using FindMyCat.Core.Security;
 using FindMyCat.Core.Services;
-using FindMyCat.Core.Services.Hologram;
-using FindMyCat.Core.Services.Traccar;
 using FindMyCat.Data;
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers()
+ValidatorOptions.Global.PropertyNameResolver = (_, member, _) =>
+    member is null
+        ? null
+        : ApiJsonOptions.Default.PropertyNamingPolicy?.ConvertName(member.Name) ?? member.Name;
+
+builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
+
+builder.Services.AddControllers(options => options.Filters.Add<RequestValidationFilter>())
     .AddJsonOptions(options => ApiJsonOptions.Configure(options.JsonSerializerOptions));
+
+builder.Services.Configure<ApiBehaviorOptions>(opt => opt.InvalidModelStateResponseFactory = DescribeRequestThatCouldNotBeBound);
+
+builder.Services.AddExceptionHandler<FindMyCatExceptionHandler>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -145,17 +163,21 @@ if (googleAuthEnabled)
             }
 
             var provisioningService = context.HttpContext.RequestServices.GetRequiredService<IUserProvisioningService>();
-            var result = await provisioningService.ProvisionOrSignInAsync(
-                new GoogleUserInfo(googleSubjectId, email, displayName),
-                context.HttpContext.RequestAborted);
 
-            if (!result.IsSuccess)
+            User user;
+            try
             {
-                context.HttpContext.Items[SignInDenialCodeItemsKey] = result.DenialCode ?? "access_denied";
-                throw new AuthenticationException(result.DenialReason ?? "Access denied.");
+                user = await provisioningService.ProvisionOrSignInAsync(
+                    new GoogleUserInfo(googleSubjectId, email, displayName),
+                    context.HttpContext.RequestAborted);
+            }
+            catch (FindMyCatException ex)
+            {
+                context.HttpContext.Items[SignInDenialCodeItemsKey] = ex.Code;
+                throw new AuthenticationException(ex.Message, ex);
             }
 
-            context.Principal = AuthClaimsFactory.CreatePrincipal(result.User!);
+            context.Principal = AuthClaimsFactory.CreatePrincipal(user);
         };
 
         options.Events.OnRemoteFailure = context =>
@@ -195,14 +217,26 @@ builder.Services.AddRateLimiter(options =>
 
     options.OnRejected = async (context, cancellationToken) =>
     {
-        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-        await context.HttpContext.Response.WriteAsJsonAsync(
-            new AuthErrorResponse("too_many_requests", "Too many attempts. Please wait a moment and try again."),
-            cancellationToken);
+        await ApiErrorResults.WriteAsync(
+            context.HttpContext.Response, StatusCodes.Status429TooManyRequests,
+            StatusCodeErrors.For(StatusCodes.Status429TooManyRequests), cancellationToken);
     };
 });
 
 var app = builder.Build();
+
+// ExceptionHandler is required by the middleware; without one it demands AddProblemDetails().
+app.UseExceptionHandler(new ExceptionHandlerOptions
+{
+    ExceptionHandler = context => ApiErrorResults.WriteAsync(
+        context.Response, StatusCodes.Status500InternalServerError,
+        StatusCodeErrors.For(StatusCodes.Status500InternalServerError))
+});
+
+app.UseStatusCodePages(context => ApiErrorResults.WriteAsync(
+    context.HttpContext.Response,
+    context.HttpContext.Response.StatusCode,
+    StatusCodeErrors.For(context.HttpContext.Response.StatusCode)));
 
 if (app.Environment.IsDevelopment())
 {
@@ -238,6 +272,9 @@ app.MapControllers();
 app.MapFallbackToFile("index.html").AllowAnonymous();
 
 app.Run();
+
+static IActionResult DescribeRequestThatCouldNotBeBound(ActionContext context) =>
+    new BadRequestObjectResult(new ApiError(Code: null, "The request could not be read."));
 
 static void TrustAnyUnroutablePrivateNetworkAsReverseProxy(IList<System.Net.IPNetwork> knownNetworks)
 {

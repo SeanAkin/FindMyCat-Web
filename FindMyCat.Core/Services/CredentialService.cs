@@ -1,6 +1,9 @@
 using System.Security.Cryptography;
 using FindMyCat.Core.Entities;
+using FindMyCat.Core.Errors;
+using FindMyCat.Core.Models;
 using FindMyCat.Core.RepositoryContracts;
+using FindMyCat.Core.Security;
 using Microsoft.Extensions.Logging;
 
 namespace FindMyCat.Core.Services;
@@ -13,9 +16,9 @@ public interface ICredentialService
 
     Task SetHologramKeyAsync(string apiKey, CancellationToken cancellationToken = default);
     
-    Task<bool> DeleteTraccarTokenAsync(CancellationToken cancellationToken = default);
+    Task DeleteTraccarTokenAsync(CancellationToken cancellationToken = default);
 
-    Task<bool> DeleteHologramKeyAsync(CancellationToken cancellationToken = default);
+    Task DeleteHologramKeyAsync(CancellationToken cancellationToken = default);
     
     Task<string?> GetTraccarTokenAsync(CancellationToken cancellationToken = default);
 
@@ -51,30 +54,28 @@ public sealed class CredentialService(ISharedCredentialRepository credentialRepo
         await SaveAsync(credential, cancellationToken);
     }
 
-    public async Task<bool> DeleteTraccarTokenAsync(CancellationToken cancellationToken = default)
+    public async Task DeleteTraccarTokenAsync(CancellationToken cancellationToken = default)
     {
         var credential = await credentialRepository.GetAsync(cancellationToken);
         if (credential?.TraccarApiTokenProtected is null)
         {
-            return false;
+            throw new CredentialNotConfiguredException("Traccar API token");
         }
 
         credential.TraccarApiTokenProtected = null;
         await SaveAsync(credential, cancellationToken);
-        return true;
     }
 
-    public async Task<bool> DeleteHologramKeyAsync(CancellationToken cancellationToken = default)
+    public async Task DeleteHologramKeyAsync(CancellationToken cancellationToken = default)
     {
         var credential = await credentialRepository.GetAsync(cancellationToken);
         if (credential?.HologramApiKeyProtected is null)
         {
-            return false;
+            throw new CredentialNotConfiguredException("Hologram API key");
         }
 
         credential.HologramApiKeyProtected = null;
         await SaveAsync(credential, cancellationToken);
-        return true;
     }
 
     public async Task<string?> GetTraccarTokenAsync(CancellationToken cancellationToken = default)

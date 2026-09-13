@@ -1,6 +1,6 @@
-using FindMyCat.Core;
 using FindMyCat.Core.Entities;
 using FindMyCat.Core.RepositoryContracts;
+using FindMyCat.Core.Security;
 using Microsoft.EntityFrameworkCore;
 
 namespace FindMyCat.Data.Repositories;
