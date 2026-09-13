@@ -39,7 +39,7 @@ public sealed class ErrorCodeValueTests
         nameof(ErrorCodes.HologramUnavailable) => "hologram_unavailable",
         _ => throw new ArgumentOutOfRangeException(
             nameof(constantName), constantName,
-            "New error code: add the value it sends here, and to the ApiErrorCode union in frontend/src/api/types.ts.")
+            "New error code: add the value it sends here, and to the ApiErrorCode union in FindMyCat.UI/src/api/types.ts.")
     };
 
     private static IEnumerable<FieldInfo> ErrorCodeConstants() => typeof(ErrorCodes)

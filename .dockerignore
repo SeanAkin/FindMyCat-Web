@@ -1,8 +1,8 @@
 **/bin/
 **/obj/
 **/node_modules/
-frontend/dist/
-frontend/cypress/screenshots/
+FindMyCat.UI/dist/
+FindMyCat.UI/cypress/screenshots/
 .git/
 .idea/
 .vs/

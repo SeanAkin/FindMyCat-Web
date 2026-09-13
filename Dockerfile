@@ -1,10 +1,10 @@
 FROM node:22-alpine AS frontend-build
-WORKDIR /src/frontend
+WORKDIR /src/FindMyCat.UI
 
-COPY ["frontend/package.json", "frontend/package-lock.json", "./"]
+COPY ["FindMyCat.UI/package.json", "FindMyCat.UI/package-lock.json", "./"]
 RUN npm ci
 
-COPY frontend/ .
+COPY FindMyCat.UI/ .
 RUN npm run build
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
@@ -28,7 +28,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 COPY --from=build /app .
-COPY --from=frontend-build /src/frontend/dist ./wwwroot
+COPY --from=frontend-build /src/FindMyCat.UI/dist ./wwwroot
 
 EXPOSE 8080
 

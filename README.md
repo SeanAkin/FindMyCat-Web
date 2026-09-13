@@ -65,12 +65,12 @@ The API starts on `http://localhost:5120` (see `FindMyCat.Api/Properties/launchS
 ### Frontend
 
 ```
-cd frontend
+cd FindMyCat.UI
 npm install
 npm run dev
 ```
 
-The dev server runs on `http://localhost:5173`. It proxies `/auth`, `/api`, and `/public` requests to the backend on port 5120 (see `frontend/vite.config.ts`).
+The dev server runs on `http://localhost:5173`. It proxies `/auth`, `/api`, and `/public` requests to the backend on port 5120 (see `FindMyCat.UI/vite.config.ts`).
 
 Open `http://localhost:5173` and create an account with email and password, or sign in with Google if you've configured it. See [Environment Variables](#environment-variables) below.
 
@@ -81,7 +81,7 @@ dotnet test FindMyCat.slnx          # backend unit + integration tests
 ```
 
 ```
-cd frontend
+cd FindMyCat.UI
 npm run test                        # frontend unit tests (Vitest)
 npm run e2e                         # end-to-end tests (Cypress)
 ```

@@ -2,7 +2,7 @@
   <Project Path="FindMyCat.Api/FindMyCat.Api.csproj" />
   <Project Path="FindMyCat.Core/FindMyCat.Core.csproj" />
   <Project Path="FindMyCat.Data/FindMyCat.Data.csproj" />
-  <Project Path="frontend/frontend.esproj" />
+  <Project Path="FindMyCat.UI/FindMyCat.UI.esproj" />
   <Project Path="FindMyCat.UnitTests/FindMyCat.UnitTests.csproj" />
   <Project Path="FindMyCat.IntegrationTests/FindMyCat.IntegrationTests.csproj" />
 </Solution>
