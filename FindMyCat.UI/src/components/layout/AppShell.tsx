@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { LogOut, Settings, UserRound } from 'lucide-react'
 import { Link, Outlet, useNavigate } from 'react-router-dom'
 import { Logo } from '@/components/Logo'
@@ -10,12 +11,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useHideOnScroll } from '@/hooks/useHideOnScroll'
+import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
+
+const HEADER_HEIGHT_PX = 64
 
 export function AppShell() {
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
   const navigate = useNavigate()
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
+  const isScrolledAway = useHideOnScroll(HEADER_HEIGHT_PX)
+  const isHeaderHidden = isScrolledAway && !isAccountMenuOpen
 
   if (!user) {
     return null
@@ -28,7 +36,12 @@ export function AppShell() {
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
-      <header className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80">
+      <header
+        className={cn(
+          'sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur transition-transform duration-200 focus-within:translate-y-0 motion-reduce:transition-none supports-backdrop-filter:bg-background/80',
+          isHeaderHidden && '-translate-y-full',
+        )}
+      >
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2.5">
             <Logo size={28} />
@@ -49,7 +62,7 @@ export function AppShell() {
               </Button>
             )}
             <ThemeToggle />
-            <DropdownMenu>
+            <DropdownMenu onOpenChange={(open) => setIsAccountMenuOpen(open)}>
               <DropdownMenuTrigger
                 render={
                   <Button
