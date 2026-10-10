@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
@@ -49,5 +49,41 @@ describe('AppShell', () => {
 
     expect(await screen.findByText('Login page')).toBeInTheDocument()
     expect(useAuthStore.getState().status).toBe('unauthenticated')
+  })
+
+  describe('header scroll behaviour', () => {
+    function scrollTo(y: number) {
+      act(() => {
+        Object.defineProperty(window, 'scrollY', { value: y, configurable: true })
+        fireEvent.scroll(window)
+      })
+    }
+
+    afterEach(() => {
+      Object.defineProperty(window, 'scrollY', { value: 0, configurable: true })
+    })
+
+    it('hides the header on scroll down and reveals it on scroll up', () => {
+      renderAppShell()
+      const header = screen.getByRole('banner')
+
+      scrollTo(300)
+      expect(header).toHaveClass('-translate-y-full')
+
+      scrollTo(200)
+      expect(header).not.toHaveClass('-translate-y-full')
+    })
+
+    it('keeps the header visible while the account menu is open', async () => {
+      const user = userEvent.setup()
+      renderAppShell()
+      const header = screen.getByRole('banner')
+
+      await user.click(screen.getByRole('button', { name: 'Account menu' }))
+      await screen.findByRole('menu')
+      scrollTo(300)
+
+      expect(header).not.toHaveClass('-translate-y-full')
+    })
   })
 })

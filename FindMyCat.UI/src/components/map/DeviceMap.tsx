@@ -223,8 +223,9 @@ export function DeviceMap() {
   const isLoading = status === 'loading' || status === 'idle'
   const isEmpty = status === 'success' && devicesWithPosition.length === 0
 
+  // `isolate` keeps Leaflet's internal z-indices (panes 400, controls 1000) from escaping above the sticky header.
   return (
-    <div className="relative h-[420px] w-full overflow-hidden rounded-xl border border-border">
+    <div className="relative isolate h-[420px] w-full overflow-hidden rounded-xl border border-border">
       <div ref={containerRef} className="device-map h-full w-full" />
       {isLoading && (
         <Skeleton className="absolute inset-0 h-full w-full rounded-xl" />
