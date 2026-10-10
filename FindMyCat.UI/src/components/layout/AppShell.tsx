@@ -61,12 +61,17 @@ export function AppShell() {
               >
                 <UserRound className="size-4.5" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent
+                align="end"
+                className="w-auto min-w-48 max-w-[calc(100vw-2rem)]"
+              >
                 <div className="px-1.5 py-1">
-                  <p className="font-medium text-foreground">
+                  <p className="font-medium text-foreground wrap-anywhere">
                     {user.displayName}
                   </p>
-                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                  <p className="text-xs text-muted-foreground wrap-anywhere">
+                    {user.email}
+                  </p>
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" onClick={handleLogout}>
