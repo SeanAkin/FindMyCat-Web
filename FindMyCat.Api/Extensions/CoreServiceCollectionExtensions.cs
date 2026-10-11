@@ -1,0 +1,55 @@
+using FindMyCat.Core;
+using FindMyCat.Core.Integrations.Hologram;
+using FindMyCat.Core.Integrations.Traccar;
+using FindMyCat.Core.Security;
+using FindMyCat.Data;
+
+namespace FindMyCat.Api.Extensions;
+
+public static class CoreServiceCollectionExtensions
+{
+    public static IServiceCollection AddFindMyCatServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddFindMyCatCore();
+        services.AddFindMyCatData(configuration);
+        services.AddCredentialProtection(configuration);
+        services.AddIntegrationClients(configuration);
+
+        return services;
+    }
+
+    private static void AddCredentialProtection(this IServiceCollection services, IConfiguration configuration)
+    {
+        var credentialKey = AesGcmCredentialProtector.ParseKey(
+            configuration["FINDMYCAT_ENCRYPTION_KEY"] is { } key && !string.IsNullOrWhiteSpace(key)
+                ? key
+                : throw new ArgumentException("Environment variable 'FINDMYCAT_ENCRYPTION_KEY' is missing or empty."));
+
+        services.AddSingleton<ICredentialProtector>(new AesGcmCredentialProtector(credentialKey));
+    }
+
+    private static void AddIntegrationClients(this IServiceCollection services, IConfiguration configuration)
+    {
+        var traccarBaseUrl = configuration["Traccar:BaseUrl"];
+        if (!Uri.TryCreate(traccarBaseUrl, UriKind.Absolute, out var traccarBaseUri))
+        {
+            throw new InvalidOperationException(
+                "Traccar:BaseUrl is missing or not an absolute URL (e.g. https://traccar.example.com).");
+        }
+
+        var traccarBaseAddressWithResolvableRelativePaths = new Uri(
+            traccarBaseUri.AbsoluteUri.EndsWith('/') ? traccarBaseUri.AbsoluteUri : traccarBaseUri.AbsoluteUri + "/");
+
+        services.AddHttpClient<ITraccarClient, TraccarClient>(client =>
+        {
+            client.BaseAddress = traccarBaseAddressWithResolvableRelativePaths;
+            client.Timeout = TimeSpan.FromSeconds(15);
+        }).AddHttpMessageHandler<TraccarTransportExceptionHandler>();
+
+        services.AddHttpClient<IHologramClient, HologramClient>(client =>
+        {
+            client.BaseAddress = new Uri("https://dashboard.hologram.io/");
+            client.Timeout = TimeSpan.FromSeconds(15);
+        }).AddHttpMessageHandler<HologramTransportExceptionHandler>();
+    }
+}
