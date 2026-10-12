@@ -1,5 +1,6 @@
 using FindMyCat.Core.Integrations.Hologram;
 using FindMyCat.Core.Integrations.Traccar;
+using FindMyCat.Core.Integrations.Traccar.Socket;
 using FindMyCat.Data;
 using FindMyCat.IntegrationTests.Stubs;
 using Microsoft.AspNetCore.Authentication;
@@ -24,6 +25,7 @@ public sealed class FindMyCatApiFactory : WebApplicationFactory<Program>, IAsync
 
     public StubTraccarClient TraccarClient { get; } = new();
     public StubHologramClient HologramClient { get; } = new();
+    public StubTraccarSocketClient TraccarSocketClient { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -44,6 +46,7 @@ public sealed class FindMyCatApiFactory : WebApplicationFactory<Program>, IAsync
 
             services.AddSingleton<ITraccarClient>(TraccarClient);
             services.AddSingleton<IHologramClient>(HologramClient);
+            services.AddSingleton<ITraccarSocketClient>(TraccarSocketClient);
         });
 
         builder.ConfigureLogging(logging =>

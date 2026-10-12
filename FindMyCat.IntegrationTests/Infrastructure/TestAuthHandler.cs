@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
@@ -38,7 +39,14 @@ public sealed class TestAuthHandler(
 
         var identity = new ClaimsIdentity(claims, Scheme.Name);
         var principal = new ClaimsPrincipal(identity);
-        var ticket = new AuthenticationTicket(principal, Scheme.Name);
+        var properties = new AuthenticationProperties();
+
+        if (Request.Headers.TryGetValue(TestAuthDefaults.ExpiresAtHeader, out var expiresAt))
+        {
+            properties.ExpiresUtc = DateTimeOffset.Parse(expiresAt.ToString(), CultureInfo.InvariantCulture);
+        }
+
+        var ticket = new AuthenticationTicket(principal, properties, Scheme.Name);
 
         return Task.FromResult(AuthenticateResult.Success(ticket));
     }
