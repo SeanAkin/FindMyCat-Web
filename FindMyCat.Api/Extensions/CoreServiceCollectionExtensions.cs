@@ -1,6 +1,7 @@
 using FindMyCat.Core;
 using FindMyCat.Core.Integrations.Hologram;
 using FindMyCat.Core.Integrations.Traccar;
+using FindMyCat.Core.Integrations.Traccar.Socket;
 using FindMyCat.Core.Security;
 using FindMyCat.Data;
 
@@ -45,6 +46,12 @@ public static class CoreServiceCollectionExtensions
             client.BaseAddress = traccarBaseAddressWithResolvableRelativePaths;
             client.Timeout = TimeSpan.FromSeconds(15);
         }).AddHttpMessageHandler<TraccarTransportExceptionHandler>();
+
+        services.AddHttpClient<ITraccarSocketClient, TraccarSocketClient>(client =>
+        {
+            client.BaseAddress = traccarBaseAddressWithResolvableRelativePaths;
+            client.Timeout = TimeSpan.FromSeconds(15);
+        }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false });
 
         services.AddHttpClient<IHologramClient, HologramClient>(client =>
         {

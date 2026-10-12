@@ -7,4 +7,5 @@ public static class TestAuthDefaults
     public const string EmailHeader = "X-Test-Email";
     public const string NameHeader = "X-Test-Name";
     public const string RoleHeader = "X-Test-Role";
+    public const string ExpiresAtHeader = "X-Test-Expires-At";
 }

@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using FindMyCat.Core.Entities;
 using FindMyCat.Core.Errors;
+using FindMyCat.Core.Integrations.Traccar.Socket;
 using FindMyCat.Core.RepositoryContracts;
 using FindMyCat.Core.Security;
 using FindMyCat.Core.Services;
@@ -14,11 +15,12 @@ public class CredentialServiceTests
     private readonly Mock<ISharedCredentialRepository> _repository = new();
     private readonly AesGcmCredentialProtector _protector =
         new(RandomNumberGenerator.GetBytes(AesGcmCredentialProtector.KeySizeBytes));
+    private readonly TraccarCredentialChangeSignal _traccarCredentialChangeSignal = new();
     private readonly CredentialService _sut;
 
     public CredentialServiceTests()
     {
-        _sut = new CredentialService(_repository.Object, _protector, NullLogger<CredentialService>.Instance);
+        _sut = new CredentialService(_repository.Object, _protector, _traccarCredentialChangeSignal, NullLogger<CredentialService>.Instance);
     }
 
     [Fact]
@@ -160,5 +162,37 @@ public class CredentialServiceTests
         var token = await _sut.GetTraccarTokenAsync(TestContext.Current.CancellationToken);
 
         token.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task SetTraccarTokenAsync_SignalsTraccarCredentialChange()
+    {
+        var changed = _traccarCredentialChangeSignal.ChangedToken;
+
+        await _sut.SetTraccarTokenAsync("secret-token", TestContext.Current.CancellationToken);
+
+        changed.IsCancellationRequested.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DeleteTraccarTokenAsync_SignalsTraccarCredentialChange()
+    {
+        _repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SharedCredential { TraccarApiTokenProtected = _protector.Encrypt("traccar") });
+        var changed = _traccarCredentialChangeSignal.ChangedToken;
+
+        await _sut.DeleteTraccarTokenAsync(TestContext.Current.CancellationToken);
+
+        changed.IsCancellationRequested.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task SetHologramKeyAsync_DoesNotSignalTraccarCredentialChange()
+    {
+        var changed = _traccarCredentialChangeSignal.ChangedToken;
+
+        await _sut.SetHologramKeyAsync("secret-key", TestContext.Current.CancellationToken);
+
+        changed.IsCancellationRequested.ShouldBeFalse();
     }
 }

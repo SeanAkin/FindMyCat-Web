@@ -1,6 +1,7 @@
 using FindMyCat.Core.Entities;
 using FindMyCat.Core.Integrations.Hologram;
 using FindMyCat.Core.Integrations.Traccar;
+using FindMyCat.Core.Integrations.Traccar.Socket;
 using FindMyCat.Core.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +17,7 @@ public static class DependencyInjection
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<ICredentialService, CredentialService>();
         services.AddScoped<ITraccarService, TraccarService>();
+        services.AddSingleton<TraccarCredentialChangeSignal>();
         services.AddScoped<IHologramService, HologramService>();
         services.AddTransient<TraccarTransportExceptionHandler>();
         services.AddTransient<HologramTransportExceptionHandler>();

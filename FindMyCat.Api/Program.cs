@@ -1,4 +1,5 @@
 using FindMyCat.Api.Extensions;
+using FindMyCat.Api.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,7 +8,8 @@ builder.Services
     .AddFindMyCatServices(builder.Configuration)
     .AddFindMyCatAuth(builder.Configuration)
     .AddFindMyCatForwardedHeaders()
-    .AddFindMyCatRateLimiting();
+    .AddFindMyCatRateLimiting()
+    .AddFindMyCatLiveUpdates(builder.Configuration);
 
 var app = builder.Build();
 
@@ -41,6 +43,7 @@ if (isTestingEnvironment)
 }
 
 app.MapControllers();
+app.MapHub<DevicesHub>(DevicesHub.Route, options => options.CloseOnAuthenticationExpiration = true);
 
 app.MapFallbackToFile("index.html").AllowAnonymous();
 

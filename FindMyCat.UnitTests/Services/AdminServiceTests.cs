@@ -10,11 +10,12 @@ public class AdminServiceTests
 {
     private readonly Mock<IAllowedEmailRepository> _allowedEmailRepository = new();
     private readonly Mock<IUserRepository> _userRepository = new();
+    private readonly Mock<IConnectedClients> _connectedClients = new();
     private readonly AdminService _sut;
 
     public AdminServiceTests()
     {
-        _sut = new AdminService(_allowedEmailRepository.Object, _userRepository.Object);
+        _sut = new AdminService(_allowedEmailRepository.Object, _userRepository.Object, _connectedClients.Object);
     }
 
     [Fact]
@@ -69,6 +70,7 @@ public class AdminServiceTests
             r => r.RemoveAsync("friend@example.com", It.IsAny<CancellationToken>()), Times.Once);
         _userRepository.Verify(
             r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _connectedClients.Verify(r => r.DisconnectUser(It.IsAny<Guid>()), Times.Never);
     }
 
     [Theory]
@@ -101,6 +103,7 @@ public class AdminServiceTests
             () => _sut.RemoveAllowedEmailAsync("friend@example.com", TestContext.Current.CancellationToken));
 
         _userRepository.Verify(r => r.DeleteAsync(user.Id, It.IsAny<CancellationToken>()), Times.Once);
+        _connectedClients.Verify(r => r.DisconnectUser(user.Id), Times.Once);
     }
 
     [Fact]
