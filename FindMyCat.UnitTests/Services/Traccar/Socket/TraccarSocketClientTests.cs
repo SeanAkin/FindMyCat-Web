@@ -56,7 +56,7 @@ public class TraccarSocketClientTests
         var handler = RespondingWith(HttpStatusCode.OK, "JSESSIONID=abc123; Path=/; HttpOnly");
         var client = CreateClient(handler);
 
-        var cookie = await client.CreateSessionAsync("token+with/specials", TestContext.Current.CancellationToken);
+        var cookie = await client.CreateSessionAsync("token+with/specials", null, TestContext.Current.CancellationToken);
 
         cookie.ShouldBe("JSESSIONID=abc123");
         var request = handler.Requests.Single();
@@ -70,7 +70,7 @@ public class TraccarSocketClientTests
         var client = CreateClient(RespondingWith(HttpStatusCode.Unauthorized));
 
         await Should.ThrowAsync<TraccarCredentialRejectedException>(
-            () => client.CreateSessionAsync("tok", TestContext.Current.CancellationToken));
+            () => client.CreateSessionAsync("tok", null, TestContext.Current.CancellationToken));
     }
 
     [Theory]
@@ -81,7 +81,7 @@ public class TraccarSocketClientTests
         var client = CreateClient(RespondingWith(status));
 
         await Should.ThrowAsync<TraccarUnavailableException>(
-            () => client.CreateSessionAsync("tok", TestContext.Current.CancellationToken));
+            () => client.CreateSessionAsync("tok", null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public class TraccarSocketClientTests
         var client = CreateClient(RespondingWith(HttpStatusCode.OK));
 
         await Should.ThrowAsync<TraccarUnavailableException>(
-            () => client.CreateSessionAsync("tok", TestContext.Current.CancellationToken));
+            () => client.CreateSessionAsync("tok", null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public class TraccarSocketClientTests
         var client = CreateClient(new StubHttpMessageHandler(_ => throw new HttpRequestException("connection refused")));
 
         await Should.ThrowAsync<TraccarUnavailableException>(
-            () => client.CreateSessionAsync("tok", TestContext.Current.CancellationToken));
+            () => client.CreateSessionAsync("tok", null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -132,9 +132,10 @@ public class TraccarSocketClientTests
     }
 
     [Fact]
-    public async Task Repeated_failed_upgrades_reuse_one_traccar_session()
+    public async Task Every_reconnect_logs_in_with_the_token_and_hands_back_the_previous_session()
     {
-        var session = new StubHttpMessageHandler(_ => Respond(HttpStatusCode.OK, "JSESSIONID=abc123"));
+        var sessionNumber = 0;
+        var session = new StubHttpMessageHandler(_ => Respond(HttpStatusCode.OK, $"JSESSIONID={++sessionNumber}"));
         var client = CreateClient(new SessionStubWithRealSocket(session), UnusedLoopbackAddress());
 
         for (var attempt = 0; attempt < 3; attempt++)
@@ -143,42 +144,19 @@ public class TraccarSocketClientTests
                 () => client.ConnectAsync("tok", TestContext.Current.CancellationToken));
         }
 
-        session.Requests.Count(IsTokenLogin).ShouldBe(1);
-        session.Requests.Where(r => !IsTokenLogin(r)).ShouldAllBe(r => r.Method == HttpMethod.Get && CookieOf(r) == "JSESSIONID=abc123");
+        session.Requests.ShouldAllBe(r => r.Method == HttpMethod.Get && IsTokenLogin(r));
+        session.Requests.Select(CookieOf).ShouldBe([null, "JSESSIONID=1", "JSESSIONID=2"]);
+        _sessions.Cookie.ShouldBe("JSESSIONID=3");
     }
 
     [Fact]
-    public async Task A_session_traccar_no_longer_recognises_is_replaced()
+    public async Task A_token_traccar_no_longer_accepts_is_rejected_even_with_a_previous_session()
     {
-        _sessions.Current = new TraccarSession("tok", "JSESSIONID=forgotten");
-        var session = new StubHttpMessageHandler(request => IsTokenLogin(request)
-            ? Respond(HttpStatusCode.OK, "JSESSIONID=fresh")
-            : Respond(HttpStatusCode.NotFound));
-        var client = CreateClient(new SessionStubWithRealSocket(session), UnusedLoopbackAddress());
+        _sessions.Cookie = "JSESSIONID=still-signed-in";
+        var client = CreateClient(new SessionStubWithRealSocket(RespondingWith(HttpStatusCode.Unauthorized)), UnusedLoopbackAddress());
 
-        await Should.ThrowAsync<TraccarUnavailableException>(
-            () => client.ConnectAsync("tok", TestContext.Current.CancellationToken));
-
-        _sessions.Current.ShouldBe(new TraccarSession("tok", "JSESSIONID=fresh"));
-        session.Requests.ShouldNotContain(r => r.Method == HttpMethod.Delete);
-    }
-
-    [Fact]
-    public async Task Changing_the_token_signs_out_of_the_previous_session()
-    {
-        _sessions.Current = new TraccarSession("old-token", "JSESSIONID=old");
-        var session = new StubHttpMessageHandler(request => request.Method == HttpMethod.Delete
-            ? Respond(HttpStatusCode.NoContent)
-            : Respond(HttpStatusCode.OK, "JSESSIONID=new"));
-        var client = CreateClient(new SessionStubWithRealSocket(session), UnusedLoopbackAddress());
-
-        await Should.ThrowAsync<TraccarUnavailableException>(
-            () => client.ConnectAsync("new-token", TestContext.Current.CancellationToken));
-
-        var signOut = session.Requests.First();
-        signOut.Method.ShouldBe(HttpMethod.Delete);
-        CookieOf(signOut).ShouldBe("JSESSIONID=old");
-        _sessions.Current.ShouldBe(new TraccarSession("new-token", "JSESSIONID=new"));
+        await Should.ThrowAsync<TraccarCredentialRejectedException>(
+            () => client.ConnectAsync("revoked-token", TestContext.Current.CancellationToken));
     }
 
     [Theory]

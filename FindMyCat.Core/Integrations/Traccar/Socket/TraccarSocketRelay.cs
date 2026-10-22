@@ -35,9 +35,9 @@ public sealed class TraccarSocketRelay(
             using var attempt = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, credentialChangeSignal.ChangedToken);
 
             var outcome = await ConnectAndRelayAsync(attempt.Token);
-            if (!stoppingToken.IsCancellationRequested)
+            if (!stoppingToken.IsCancellationRequested && StatusAfter(outcome) is { } status)
             {
-                await BroadcastAsync(() => publisher.PublishConnectionChangedAsync(StatusAfter(outcome), stoppingToken), stoppingToken);
+                await BroadcastIgnoringBrowserFailuresAsync(() => publisher.PublishConnectionChangedAsync(status, stoppingToken), stoppingToken);
             }
 
             consecutiveFailures = outcome switch
@@ -79,11 +79,11 @@ public sealed class TraccarSocketRelay(
 
             connectedAt = Stopwatch.GetTimestamp();
             logger.LogInformation("Connected to the Traccar socket.");
-            await BroadcastAsync(() => publisher.PublishConnectionChangedAsync(TraccarConnectionStatus.Up, cancellationToken), cancellationToken);
+            await BroadcastIgnoringBrowserFailuresAsync(() => publisher.PublishConnectionChangedAsync(TraccarConnectionStatus.Up, cancellationToken), cancellationToken);
 
             await foreach (var message in connection.ReadMessagesAsync(cancellationToken))
             {
-                await BroadcastAsync(() => publisher.PublishAsync(message, cancellationToken), cancellationToken);
+                await BroadcastIgnoringBrowserFailuresAsync(() => publisher.PublishAsync(message, cancellationToken), cancellationToken);
             }
 
             logger.LogWarning("Traccar closed the socket connection.");
@@ -112,16 +112,15 @@ public sealed class TraccarSocketRelay(
         }
     }
 
-    private static TraccarConnectionStatus StatusAfter(ConnectionOutcome outcome) => outcome switch
+    private static TraccarConnectionStatus? StatusAfter(ConnectionOutcome outcome) => outcome switch
     {
         ConnectionOutcome.NotConfigured => TraccarConnectionStatus.NotConfigured,
         ConnectionOutcome.CredentialRejected => TraccarConnectionStatus.CredentialRejected,
+        ConnectionOutcome.Interrupted => null,
         _ => TraccarConnectionStatus.Unavailable
     };
 
-    // A failed broadcast to browsers must not tear down the Traccar connection, or escape the
-    // finally block and stop the host.
-    private async Task BroadcastAsync(Func<Task> broadcast, CancellationToken cancellationToken)
+    private async Task BroadcastIgnoringBrowserFailuresAsync(Func<Task> broadcast, CancellationToken cancellationToken)
     {
         try
         {

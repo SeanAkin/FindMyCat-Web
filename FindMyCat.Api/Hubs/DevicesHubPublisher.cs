@@ -6,10 +6,11 @@ namespace FindMyCat.Api.Hubs;
 
 public sealed class DevicesHubPublisher(
     IHubContext<DevicesHub, IDevicesClient> hubContext,
-    ILogger<DevicesHubPublisher> logger) : ITraccarUpdatePublisher
+    ILogger<DevicesHubPublisher> logger,
+    TraccarConnectionStatus initialStatus) : ITraccarUpdatePublisher
 {
     private readonly Lock _statusSendOrder = new();
-    private TraccarConnectionStatus _status = TraccarConnectionStatus.Unavailable;
+    private TraccarConnectionStatus _status = initialStatus;
 
     public Task PublishAsync(TraccarSocketMessage message, CancellationToken cancellationToken = default)
     {

@@ -22,6 +22,7 @@ public static class ErrorCodes
     public const string TraccarNotConfigured = "traccar_not_configured";
     public const string TraccarCredentialRejected = "traccar_credential_rejected";
     public const string TraccarUnavailable = "traccar_unavailable";
+    public const string LiveUpdatesDisabled = "live_updates_disabled";
 
     public const string HologramNotConfigured = "hologram_not_configured";
     public const string HologramDeviceNotFound = "hologram_device_not_found";

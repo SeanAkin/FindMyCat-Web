@@ -77,6 +77,7 @@ export type ApiErrorCode =
   | 'traccar_not_configured'
   | 'traccar_credential_rejected'
   | 'traccar_unavailable'
+  | 'live_updates_disabled'
   | 'hologram_not_configured'
   | 'hologram_device_not_found'
   | 'hologram_credential_rejected'

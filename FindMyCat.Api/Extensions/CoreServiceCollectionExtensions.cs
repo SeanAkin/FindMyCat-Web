@@ -7,6 +7,7 @@ using FindMyCat.Core.Integrations.Traccar.Socket;
 using FindMyCat.Core.Security;
 using FindMyCat.Core.Services;
 using FindMyCat.Data;
+using Microsoft.AspNetCore.SignalR;
 
 namespace FindMyCat.Api.Extensions;
 
@@ -69,12 +70,17 @@ public static class CoreServiceCollectionExtensions
         services.AddSignalR()
             .AddJsonProtocol(options => ApiJsonOptions.Configure(options.PayloadSerializerOptions));
 
-        services.AddSingleton<DevicesHubPublisher>();
+        var liveUpdatesEnabled = configuration.GetValue("Traccar:LiveUpdates:Enabled", true);
+
+        services.AddSingleton(sp => new DevicesHubPublisher(
+            sp.GetRequiredService<IHubContext<DevicesHub, IDevicesClient>>(),
+            sp.GetRequiredService<ILogger<DevicesHubPublisher>>(),
+            liveUpdatesEnabled ? TraccarConnectionStatus.Unavailable : TraccarConnectionStatus.LiveUpdatesDisabled));
         services.AddSingleton<ITraccarUpdatePublisher>(sp => sp.GetRequiredService<DevicesHubPublisher>());
         services.AddSingleton<DevicesHubConnections>();
         services.AddSingleton<IConnectedClients>(sp => sp.GetRequiredService<DevicesHubConnections>());
 
-        if (configuration.GetValue("Traccar:LiveUpdates:Enabled", true))
+        if (liveUpdatesEnabled)
         {
             services.AddHostedService<TraccarSocketRelay>();
         }

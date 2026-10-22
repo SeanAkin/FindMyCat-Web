@@ -16,6 +16,7 @@ public class TraccarSocketRelayTests
     private readonly Mock<ICredentialService> _credentials = new();
     private readonly Mock<ITraccarSocketClient> _socketClient = new();
     private readonly Mock<ITraccarUpdatePublisher> _publisher = new();
+    private readonly TraccarCredentialChangeSignal _credentialChangeSignal = new();
     private readonly Channel<StubConnection> _connections = Channel.CreateUnbounded<StubConnection>();
     private readonly TraccarSocketRelay _sut;
 
@@ -35,7 +36,7 @@ public class TraccarSocketRelayTests
         _sut = new TraccarSocketRelay(
             scopeFactory.Object,
             _publisher.Object,
-            new TraccarCredentialChangeSignal(),
+            _credentialChangeSignal,
             NullLogger<TraccarSocketRelay>.Instance);
     }
 
@@ -119,6 +120,24 @@ public class TraccarSocketRelayTests
         await _sut.StartAsync(TestContext.Current.CancellationToken);
 
         (await published.Reader.ReadAsync(Timeout())).ShouldBe(TraccarConnectionStatus.CredentialRejected);
+        await _sut.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task Saving_a_new_token_does_not_report_traccar_as_unavailable_while_reconnecting()
+    {
+        var published = Channel.CreateUnbounded<TraccarConnectionStatus>();
+        _publisher.Setup(p => p.PublishConnectionChangedAsync(It.IsAny<TraccarConnectionStatus>(), It.IsAny<CancellationToken>()))
+            .Callback<TraccarConnectionStatus, CancellationToken>((status, _) => published.Writer.TryWrite(status))
+            .Returns(Task.CompletedTask);
+
+        await _sut.StartAsync(TestContext.Current.CancellationToken);
+        (await published.Reader.ReadAsync(Timeout())).ShouldBe(TraccarConnectionStatus.Up);
+
+        _credentialChangeSignal.NotifyChanged();
+
+        (await published.Reader.ReadAsync(Timeout())).ShouldBe(TraccarConnectionStatus.Up);
+        _socketClient.Verify(c => c.ConnectAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         await _sut.StopAsync(TestContext.Current.CancellationToken);
     }
 

@@ -1,16 +1,14 @@
 namespace FindMyCat.Core.Integrations.Traccar.Socket;
 
-// Traccar sessions never expire unless web.sessionTimeout is set, so reconnects reuse one session
-// instead of leaving a new one behind on every attempt.
+// Traccar sessions never expire unless web.sessionTimeout is set. Logging in with the previous
+// session cookie makes Traccar replace that session instead of leaving it behind.
 public sealed class TraccarSessionStore
 {
-    private volatile TraccarSession? _current;
+    private volatile string? _cookie;
 
-    internal TraccarSession? Current
+    internal string? Cookie
     {
-        get => _current;
-        set => _current = value;
+        get => _cookie;
+        set => _cookie = value;
     }
 }
-
-internal sealed record TraccarSession(string Token, string Cookie);

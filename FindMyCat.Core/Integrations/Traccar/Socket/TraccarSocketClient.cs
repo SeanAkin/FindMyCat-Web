@@ -47,30 +47,20 @@ public sealed class TraccarSocketClient(
 
     private async Task<string> GetSessionCookieAsync(string token, CancellationToken cancellationToken)
     {
-        if (sessions.Current is { } current)
-        {
-            if (current.Token == token && await IsSessionActiveAsync(current.Cookie, cancellationToken))
-            {
-                return current.Cookie;
-            }
-
-            if (current.Token != token)
-            {
-                await EndSessionAsync(current.Cookie, cancellationToken);
-            }
-
-            sessions.Current = null;
-        }
-
-        var cookie = await CreateSessionAsync(token, cancellationToken);
-        sessions.Current = new TraccarSession(token, cookie);
+        var cookie = await CreateSessionAsync(token, sessions.Cookie, cancellationToken);
+        sessions.Cookie = cookie;
         return cookie;
     }
 
-    internal async Task<string> CreateSessionAsync(string token, CancellationToken cancellationToken)
+    internal async Task<string> CreateSessionAsync(string token, string? previousSessionCookie, CancellationToken cancellationToken)
     {
-        using var response = await SendSessionRequestAsync(
-            new HttpRequestMessage(HttpMethod.Get, $"{SessionPath}?token={Uri.EscapeDataString(token)}"), cancellationToken);
+        var request = new HttpRequestMessage(HttpMethod.Get, $"{SessionPath}?token={Uri.EscapeDataString(token)}");
+        if (previousSessionCookie is not null)
+        {
+            request.Headers.Add("Cookie", previousSessionCookie);
+        }
+
+        using var response = await SendSessionRequestAsync(request, cancellationToken);
 
         if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
@@ -92,33 +82,6 @@ public sealed class TraccarSocketClient(
             : throw new TraccarUnavailableException($"Traccar did not return a session cookie for {SessionPath}.");
     }
 
-    private async Task<bool> IsSessionActiveAsync(string sessionCookie, CancellationToken cancellationToken)
-    {
-        using var response = await SendSessionRequestAsync(WithCookie(HttpMethod.Get, sessionCookie), cancellationToken);
-
-        var signedOutOrForgottenByTraccarRestart = response.StatusCode == HttpStatusCode.NotFound;
-        if (signedOutOrForgottenByTraccarRestart)
-        {
-            return false;
-        }
-
-        return response.IsSuccessStatusCode
-            ? true
-            : throw new TraccarUnavailableException($"Traccar returned status {(int)response.StatusCode} for {SessionPath}.");
-    }
-
-    private async Task EndSessionAsync(string sessionCookie, CancellationToken cancellationToken)
-    {
-        try
-        {
-            using var response = await SendSessionRequestAsync(WithCookie(HttpMethod.Delete, sessionCookie), cancellationToken);
-        }
-        catch (TraccarUnavailableException ex)
-        {
-            logger.LogWarning("Could not sign out of the previous Traccar session: {Detail}", ex.LogDetail);
-        }
-    }
-
     private async Task<HttpResponseMessage> SendSessionRequestAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         using (request)
@@ -132,13 +95,6 @@ public sealed class TraccarSocketClient(
                 throw new TraccarUnavailableException($"Traccar session request failed to complete: {ex.Message}", ex);
             }
         }
-    }
-
-    private static HttpRequestMessage WithCookie(HttpMethod method, string sessionCookie)
-    {
-        var request = new HttpRequestMessage(method, SessionPath);
-        request.Headers.Add("Cookie", sessionCookie);
-        return request;
     }
 
     internal static Uri SocketUriFor(Uri traccarBaseAddress) =>
