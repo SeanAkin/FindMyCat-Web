@@ -4,28 +4,71 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace FindMyCat.Api.Hubs;
 
-public sealed class DevicesHubPublisher(IHubContext<DevicesHub, IDevicesClient> hubContext) : ITraccarUpdatePublisher
+public sealed class DevicesHubPublisher(
+    IHubContext<DevicesHub, IDevicesClient> hubContext,
+    ILogger<DevicesHubPublisher> logger) : ITraccarUpdatePublisher
 {
-    private volatile bool _isConnected;
+    private readonly Lock _statusSendOrder = new();
+    private TraccarConnectionStatus _status = TraccarConnectionStatus.Unavailable;
 
-    public bool IsConnected => _isConnected;
-
-    public async Task PublishAsync(TraccarSocketMessage message, CancellationToken cancellationToken = default)
+    public Task PublishAsync(TraccarSocketMessage message, CancellationToken cancellationToken = default)
     {
         if (message.Devices.Count > 0)
         {
-            await hubContext.Clients.All.DevicesUpdated(message.Devices.Select(DeviceStatusResponse.FromDomain).ToList());
+            QueueWithoutWaitingForSlowBrowsers(
+                hubContext.Clients.All.DevicesUpdated(message.Devices.Select(DeviceStatusResponse.FromDomain).ToList()));
         }
 
         if (message.Positions.Count > 0)
         {
-            await hubContext.Clients.All.PositionsUpdated(message.Positions.Select(PositionResponse.FromDomain).ToList());
+            QueueWithoutWaitingForSlowBrowsers(
+                hubContext.Clients.All.PositionsUpdated(message.Positions.Select(PositionResponse.FromDomain).ToList()));
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task PublishConnectionChangedAsync(TraccarConnectionStatus status, CancellationToken cancellationToken = default)
+    {
+        lock (_statusSendOrder)
+        {
+            if (status != _status)
+            {
+                _status = status;
+                QueueWithoutWaitingForSlowBrowsers(
+                    hubContext.Clients.All.TraccarConnectionChanged(TraccarConnectionStatusResponse.FromDomain(status)));
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public void SendCurrentStatusTo(string connectionId)
+    {
+        lock (_statusSendOrder)
+        {
+            QueueWithoutWaitingForSlowBrowsers(
+                hubContext.Clients.Client(connectionId).TraccarConnectionChanged(TraccarConnectionStatusResponse.FromDomain(_status)));
         }
     }
 
-    public Task PublishConnectionChangedAsync(bool connected, CancellationToken cancellationToken = default)
+    private void QueueWithoutWaitingForSlowBrowsers(Task delivery)
     {
-        _isConnected = connected;
-        return hubContext.Clients.All.TraccarConnectionChanged(new TraccarConnectionStatusResponse(connected));
+        if (!delivery.IsCompletedSuccessfully)
+        {
+            _ = LogIfDeliveryFailsAsync(delivery);
+        }
+    }
+
+    private async Task LogIfDeliveryFailsAsync(Task delivery)
+    {
+        try
+        {
+            await delivery;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to deliver a live update to a browser.");
+        }
     }
 }

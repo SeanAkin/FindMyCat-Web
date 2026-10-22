@@ -35,6 +35,10 @@ public sealed class TraccarSocketRelay(
             using var attempt = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, credentialChangeSignal.ChangedToken);
 
             var outcome = await ConnectAndRelayAsync(attempt.Token);
+            if (!stoppingToken.IsCancellationRequested)
+            {
+                await BroadcastAsync(() => publisher.PublishConnectionChangedAsync(StatusAfter(outcome), stoppingToken), stoppingToken);
+            }
 
             consecutiveFailures = outcome switch
             {
@@ -75,7 +79,7 @@ public sealed class TraccarSocketRelay(
 
             connectedAt = Stopwatch.GetTimestamp();
             logger.LogInformation("Connected to the Traccar socket.");
-            await BroadcastAsync(() => publisher.PublishConnectionChangedAsync(connected: true, cancellationToken), cancellationToken);
+            await BroadcastAsync(() => publisher.PublishConnectionChangedAsync(TraccarConnectionStatus.Up, cancellationToken), cancellationToken);
 
             await foreach (var message in connection.ReadMessagesAsync(cancellationToken))
             {
@@ -106,14 +110,14 @@ public sealed class TraccarSocketRelay(
             logger.LogError(ex, "Unexpected failure in the Traccar socket connection.");
             return OutcomeOfDroppedConnection(connectedAt);
         }
-        finally
-        {
-            if (connectedAt is not null)
-            {
-                await BroadcastAsync(() => publisher.PublishConnectionChangedAsync(connected: false, CancellationToken.None), CancellationToken.None);
-            }
-        }
     }
+
+    private static TraccarConnectionStatus StatusAfter(ConnectionOutcome outcome) => outcome switch
+    {
+        ConnectionOutcome.NotConfigured => TraccarConnectionStatus.NotConfigured,
+        ConnectionOutcome.CredentialRejected => TraccarConnectionStatus.CredentialRejected,
+        _ => TraccarConnectionStatus.Unavailable
+    };
 
     // A failed broadcast to browsers must not tear down the Traccar connection, or escape the
     // finally block and stop the host.

@@ -1,4 +1,5 @@
 using System.Threading.Channels;
+using FindMyCat.Core.Errors;
 using FindMyCat.Core.Integrations.Traccar;
 using FindMyCat.Core.Integrations.Traccar.Socket;
 using FindMyCat.Core.Services;
@@ -93,7 +94,7 @@ public class TraccarSocketRelayTests
     [Fact]
     public async Task A_failed_status_broadcast_does_not_stop_the_service()
     {
-        _publisher.Setup(p => p.PublishConnectionChangedAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+        _publisher.Setup(p => p.PublishConnectionChangedAsync(It.IsAny<TraccarConnectionStatus>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("hub send failed"));
 
         await _sut.StartAsync(TestContext.Current.CancellationToken);
@@ -102,6 +103,22 @@ public class TraccarSocketRelayTests
 
         await _connections.Reader.ReadAsync(Timeout());
         _sut.ExecuteTask!.IsFaulted.ShouldBeFalse();
+        await _sut.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task A_rejected_token_is_reported_so_an_admin_knows_to_re_enter_it()
+    {
+        var published = Channel.CreateUnbounded<TraccarConnectionStatus>();
+        _publisher.Setup(p => p.PublishConnectionChangedAsync(It.IsAny<TraccarConnectionStatus>(), It.IsAny<CancellationToken>()))
+            .Callback<TraccarConnectionStatus, CancellationToken>((status, _) => published.Writer.TryWrite(status))
+            .Returns(Task.CompletedTask);
+        _socketClient.Setup(c => c.ConnectAsync("stored-token", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TraccarCredentialRejectedException());
+
+        await _sut.StartAsync(TestContext.Current.CancellationToken);
+
+        (await published.Reader.ReadAsync(Timeout())).ShouldBe(TraccarConnectionStatus.CredentialRejected);
         await _sut.StopAsync(TestContext.Current.CancellationToken);
     }
 

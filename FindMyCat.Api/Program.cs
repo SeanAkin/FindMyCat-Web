@@ -8,8 +8,7 @@ builder.Services
     .AddFindMyCatServices(builder.Configuration)
     .AddFindMyCatAuth(builder.Configuration)
     .AddFindMyCatForwardedHeaders()
-    .AddFindMyCatRateLimiting()
-    .AddFindMyCatLiveUpdates(builder.Configuration);
+    .AddFindMyCatRateLimiting();
 
 var app = builder.Build();
 
@@ -41,6 +40,8 @@ if (isTestingEnvironment)
 {
     app.UseRateLimiter();
 }
+
+app.RejectCrossOriginHubRequests();
 
 app.MapControllers();
 app.MapHub<DevicesHub>(DevicesHub.Route, options => options.CloseOnAuthenticationExpiration = true);

@@ -1,4 +1,5 @@
 ﻿using FindMyCat.Core.Integrations.Traccar;
+using FindMyCat.Core.Integrations.Traccar.Socket;
 
 namespace FindMyCat.Api.Contracts;
 
@@ -71,4 +72,9 @@ public sealed record DeviceStatusResponse(
         device.Disabled);
 }
 
-public sealed record TraccarConnectionStatusResponse(bool Connected);
+public sealed record TraccarConnectionStatusResponse(bool Connected, string? Code)
+{
+    public static TraccarConnectionStatusResponse FromDomain(TraccarConnectionStatus status) => new(
+        status.Connected,
+        status.ErrorCode);
+}

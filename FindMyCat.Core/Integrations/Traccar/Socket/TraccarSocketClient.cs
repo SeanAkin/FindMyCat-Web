@@ -10,38 +10,33 @@ public interface ITraccarSocketClient
     Task<ITraccarSocketConnection> ConnectAsync(string token, CancellationToken cancellationToken = default);
 }
 
-public sealed class TraccarSocketClient(HttpClient httpClient, ILogger<TraccarSocketClient> logger) : ITraccarSocketClient
+public sealed class TraccarSocketClient(
+    HttpClient httpClient,
+    TraccarSessionStore sessions,
+    ILogger<TraccarSocketClient> logger) : ITraccarSocketClient
 {
+    private const string SessionPath = "api/session";
     private static readonly TimeSpan KeepAliveInterval = TimeSpan.FromSeconds(30);
 
     public async Task<ITraccarSocketConnection> ConnectAsync(string token, CancellationToken cancellationToken = default)
     {
-        var sessionCookie = await CreateSessionAsync(token, cancellationToken);
+        var sessionCookie = await GetSessionCookieAsync(token, cancellationToken);
 
         var socket = new ClientWebSocket();
         socket.Options.SetRequestHeader("Cookie", sessionCookie);
         socket.Options.KeepAliveInterval = KeepAliveInterval;
         socket.Options.KeepAliveTimeout = KeepAliveInterval;
 
-        // ClientWebSocket has no handshake timeout of its own, so apply the typed client's timeout here.
-        using var handshakeTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        handshakeTimeout.CancelAfter(httpClient.Timeout);
-
         try
         {
-            await socket.ConnectAsync(SocketUriFor(httpClient.BaseAddress!), handshakeTimeout.Token);
+            var typedClientHandlersAndTimeout = httpClient;
+            await socket.ConnectAsync(SocketUriFor(httpClient.BaseAddress!), typedClientHandlersAndTimeout, cancellationToken);
             return new TraccarSocketConnection(socket, logger);
         }
         catch (WebSocketException ex)
         {
             socket.Dispose();
             throw new TraccarUnavailableException($"Could not open the Traccar socket: {ex.Message}", ex);
-        }
-        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
-        {
-            socket.Dispose();
-            throw new TraccarUnavailableException(
-                $"Traccar did not complete the socket handshake within {httpClient.Timeout.TotalSeconds:0}s.", ex);
         }
         catch
         {
@@ -50,39 +45,100 @@ public sealed class TraccarSocketClient(HttpClient httpClient, ILogger<TraccarSo
         }
     }
 
+    private async Task<string> GetSessionCookieAsync(string token, CancellationToken cancellationToken)
+    {
+        if (sessions.Current is { } current)
+        {
+            if (current.Token == token && await IsSessionActiveAsync(current.Cookie, cancellationToken))
+            {
+                return current.Cookie;
+            }
+
+            if (current.Token != token)
+            {
+                await EndSessionAsync(current.Cookie, cancellationToken);
+            }
+
+            sessions.Current = null;
+        }
+
+        var cookie = await CreateSessionAsync(token, cancellationToken);
+        sessions.Current = new TraccarSession(token, cookie);
+        return cookie;
+    }
+
     internal async Task<string> CreateSessionAsync(string token, CancellationToken cancellationToken)
     {
-        HttpResponseMessage response;
+        using var response = await SendSessionRequestAsync(
+            new HttpRequestMessage(HttpMethod.Get, $"{SessionPath}?token={Uri.EscapeDataString(token)}"), cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            throw new TraccarCredentialRejectedException($"Traccar returned status {(int)response.StatusCode} for {SessionPath}.");
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new TraccarUnavailableException($"Traccar returned status {(int)response.StatusCode} for {SessionPath}.");
+        }
+
+        var cookies = response.Headers.TryGetValues("Set-Cookie", out var setCookies)
+            ? setCookies.Select(header => header.Split(';')[0])
+            : [];
+
+        var sessionCookie = string.Join("; ", cookies);
+        return sessionCookie.Length > 0
+            ? sessionCookie
+            : throw new TraccarUnavailableException($"Traccar did not return a session cookie for {SessionPath}.");
+    }
+
+    private async Task<bool> IsSessionActiveAsync(string sessionCookie, CancellationToken cancellationToken)
+    {
+        using var response = await SendSessionRequestAsync(WithCookie(HttpMethod.Get, sessionCookie), cancellationToken);
+
+        var signedOutOrForgottenByTraccarRestart = response.StatusCode == HttpStatusCode.NotFound;
+        if (signedOutOrForgottenByTraccarRestart)
+        {
+            return false;
+        }
+
+        return response.IsSuccessStatusCode
+            ? true
+            : throw new TraccarUnavailableException($"Traccar returned status {(int)response.StatusCode} for {SessionPath}.");
+    }
+
+    private async Task EndSessionAsync(string sessionCookie, CancellationToken cancellationToken)
+    {
         try
         {
-            response = await httpClient.GetAsync($"api/session?token={Uri.EscapeDataString(token)}", cancellationToken);
+            using var response = await SendSessionRequestAsync(WithCookie(HttpMethod.Delete, sessionCookie), cancellationToken);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !cancellationToken.IsCancellationRequested)
+        catch (TraccarUnavailableException ex)
         {
-            throw new TraccarUnavailableException($"Traccar session request failed to complete: {ex.Message}", ex);
+            logger.LogWarning("Could not sign out of the previous Traccar session: {Detail}", ex.LogDetail);
         }
+    }
 
-        using (response)
+    private async Task<HttpResponseMessage> SendSessionRequestAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        using (request)
         {
-            if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            try
             {
-                throw new TraccarCredentialRejectedException($"Traccar returned status {(int)response.StatusCode} for api/session.");
+                return await httpClient.SendAsync(request, cancellationToken);
             }
-
-            if (!response.IsSuccessStatusCode)
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !cancellationToken.IsCancellationRequested)
             {
-                throw new TraccarUnavailableException($"Traccar returned status {(int)response.StatusCode} for api/session.");
+                throw new TraccarUnavailableException($"Traccar session request failed to complete: {ex.Message}", ex);
             }
-
-            var cookies = response.Headers.TryGetValues("Set-Cookie", out var setCookies)
-                ? setCookies.Select(header => header.Split(';')[0])
-                : [];
-
-            var sessionCookie = string.Join("; ", cookies);
-            return sessionCookie.Length > 0
-                ? sessionCookie
-                : throw new TraccarUnavailableException("Traccar did not return a session cookie for api/session.");
         }
+    }
+
+    private static HttpRequestMessage WithCookie(HttpMethod method, string sessionCookie)
+    {
+        var request = new HttpRequestMessage(method, SessionPath);
+        request.Headers.Add("Cookie", sessionCookie);
+        return request;
     }
 
     internal static Uri SocketUriFor(Uri traccarBaseAddress) =>

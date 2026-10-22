@@ -1,8 +1,11 @@
+using FindMyCat.Api.Hubs;
+using FindMyCat.Api.Json;
 using FindMyCat.Core;
 using FindMyCat.Core.Integrations.Hologram;
 using FindMyCat.Core.Integrations.Traccar;
 using FindMyCat.Core.Integrations.Traccar.Socket;
 using FindMyCat.Core.Security;
+using FindMyCat.Core.Services;
 using FindMyCat.Data;
 
 namespace FindMyCat.Api.Extensions;
@@ -15,6 +18,7 @@ public static class CoreServiceCollectionExtensions
         services.AddFindMyCatData(configuration);
         services.AddCredentialProtection(configuration);
         services.AddIntegrationClients(configuration);
+        services.AddLiveUpdates(configuration);
 
         return services;
     }
@@ -58,5 +62,21 @@ public static class CoreServiceCollectionExtensions
             client.BaseAddress = new Uri("https://dashboard.hologram.io/");
             client.Timeout = TimeSpan.FromSeconds(15);
         }).AddHttpMessageHandler<HologramTransportExceptionHandler>();
+    }
+
+    private static void AddLiveUpdates(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddSignalR()
+            .AddJsonProtocol(options => ApiJsonOptions.Configure(options.PayloadSerializerOptions));
+
+        services.AddSingleton<DevicesHubPublisher>();
+        services.AddSingleton<ITraccarUpdatePublisher>(sp => sp.GetRequiredService<DevicesHubPublisher>());
+        services.AddSingleton<DevicesHubConnections>();
+        services.AddSingleton<IConnectedClients>(sp => sp.GetRequiredService<DevicesHubConnections>());
+
+        if (configuration.GetValue("Traccar:LiveUpdates:Enabled", true))
+        {
+            services.AddHostedService<TraccarSocketRelay>();
+        }
     }
 }

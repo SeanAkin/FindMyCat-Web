@@ -174,6 +174,7 @@ ASPNETCORE_ENVIRONMENT=Production
 FindMyCat keeps one WebSocket connection open to Traccar, using the stored API token, and pushes position and device status changes to signed-in browsers over SignalR at `/hubs/devices`. It reconnects on its own if Traccar restarts or the network drops.
 
 - Your reverse proxy must allow WebSocket upgrades to FindMyCat. Traefik and Caddy do this by default. With nginx, forward the `Upgrade` and `Connection` headers.
+- The hub only accepts browser connections from the address FindMyCat is served on, so your reverse proxy must pass the original `Host` header and set `X-Forwarded-Proto`. Traefik and Caddy do this by default. With nginx, add `proxy_set_header Host $host;` and `proxy_set_header X-Forwarded-Proto $scheme;`.
 - If FindMyCat and Traccar share a Docker network, point `Traccar__BaseUrl` at Traccar's internal service name (e.g. `http://traccar:8082`) so the connection doesn't leave the host.
 
 ### Key Rotation

@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
 using FindMyCat.Core.Entities;
 using FindMyCat.Core.Errors;
-using FindMyCat.Core.Integrations.Traccar.Socket;
 using FindMyCat.Core.Models;
 using FindMyCat.Core.RepositoryContracts;
 using FindMyCat.Core.Security;
@@ -29,7 +28,7 @@ public interface ICredentialService
 public sealed class CredentialService(
     ISharedCredentialRepository credentialRepository,
     ICredentialProtector protector,
-    TraccarCredentialChangeSignal traccarCredentialChangeSignal,
+    ITraccarCredentialChangeNotifier traccarCredentialChangeNotifier,
     ILogger<CredentialService> logger) : ICredentialService
 {
     public async Task<CredentialStatus> GetStatusAsync(CancellationToken cancellationToken = default)
@@ -50,7 +49,7 @@ public sealed class CredentialService(
         var credential = await GetOrCreateAsync(cancellationToken);
         credential.TraccarApiTokenProtected = protector.Encrypt(apiToken);
         await SaveAsync(credential, cancellationToken);
-        traccarCredentialChangeSignal.NotifyChanged();
+        traccarCredentialChangeNotifier.NotifyChanged();
     }
 
     public async Task SetHologramKeyAsync(string apiKey, CancellationToken cancellationToken = default)
@@ -70,7 +69,7 @@ public sealed class CredentialService(
 
         credential.TraccarApiTokenProtected = null;
         await SaveAsync(credential, cancellationToken);
-        traccarCredentialChangeSignal.NotifyChanged();
+        traccarCredentialChangeNotifier.NotifyChanged();
     }
 
     public async Task DeleteHologramKeyAsync(CancellationToken cancellationToken = default)

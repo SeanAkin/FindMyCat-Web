@@ -16,6 +16,10 @@ namespace FindMyCat.IntegrationTests.Devices;
 public sealed class DevicesHubTests : IntegrationTestBase
 {
     private static readonly DateTimeOffset FixTime = new(2026, 1, 2, 3, 4, 5, TimeSpan.Zero);
+    private static readonly TraccarConnectionStatusResponse Connected = TraccarConnectionStatusResponse.FromDomain(TraccarConnectionStatus.Up);
+    private static readonly TraccarConnectionStatusResponse NotConfigured = TraccarConnectionStatusResponse.FromDomain(TraccarConnectionStatus.NotConfigured);
+    private static readonly TraccarConnectionStatusResponse CredentialRejected = TraccarConnectionStatusResponse.FromDomain(TraccarConnectionStatus.CredentialRejected);
+    private static readonly TraccarConnectionStatusResponse Unavailable = TraccarConnectionStatusResponse.FromDomain(TraccarConnectionStatus.Unavailable);
 
     public DevicesHubTests(FindMyCatApiFactory factory, ITestOutputHelper output)
         : base(factory, output)
@@ -42,6 +46,26 @@ public sealed class DevicesHubTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Websocket_connection_from_another_origin_is_rejected()
+    {
+        var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await using var hub = CreateHubConnection(user, origin: "https://other.example.com");
+
+        await Should.ThrowAsync<Exception>(() => hub.StartAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Websocket_connection_from_the_app_origin_is_accepted()
+    {
+        var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await using var hub = CreateHubConnection(user, origin: Factory.Server.BaseAddress.GetLeftPart(UriPartial.Authority));
+
+        await hub.StartAsync(TestContext.Current.CancellationToken);
+
+        hub.State.ShouldBe(HubConnectionState.Connected);
+    }
+
+    [Fact]
     public async Task Hub_closes_the_connection_when_the_sign_in_expires()
     {
         var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
@@ -54,11 +78,11 @@ public sealed class DevicesHubTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task Reports_disconnected_when_traccar_is_not_configured()
+    public async Task Reports_not_configured_when_traccar_has_no_token()
     {
         await using var listener = await ListenAsync();
 
-        (await listener.WaitForStatusAsync(connected: false)).Connected.ShouldBeFalse();
+        await listener.WaitForStatusAsync(NotConfigured);
         TraccarSocket.ConnectAttempts.ShouldBeEmpty();
     }
 
@@ -71,7 +95,7 @@ public sealed class DevicesHubTests : IntegrationTestBase
 
         var connection = await TraccarSocket.WaitForConnectionAsync(TestContext.Current.CancellationToken);
         connection.Token.ShouldBe("stored-token");
-        await listener.WaitForStatusAsync(connected: true);
+        await listener.WaitForStatusAsync(Connected);
     }
 
     [Fact]
@@ -128,20 +152,21 @@ public sealed class DevicesHubTests : IntegrationTestBase
         await using var listener = await ListenAsync();
         await ConfigureTraccarTokenAsync();
         var connection = await TraccarSocket.WaitForConnectionAsync(TestContext.Current.CancellationToken);
-        await listener.WaitForStatusAsync(connected: true);
+        await listener.WaitForStatusAsync(Connected);
 
         await DeleteTraccarTokenAsync();
 
-        await listener.WaitForStatusAsync(connected: false);
+        await listener.WaitForStatusAsync(NotConfigured);
         await connection.Disposed.WaitAsync(Timeout());
     }
 
     [Fact]
-    public async Task Rejected_token_is_retried_once_the_token_changes()
+    public async Task Rejected_token_is_reported_and_retried_once_the_token_changes()
     {
+        await using var listener = await ListenAsync();
         TraccarSocket.ThrowInstead = new TraccarCredentialRejectedException("rejected");
         await ConfigureTraccarTokenAsync();
-        await WaitUntilAsync(() => !TraccarSocket.ConnectAttempts.IsEmpty);
+        await listener.WaitForStatusAsync(CredentialRejected);
 
         TraccarSocket.ThrowInstead = null;
         await SetTraccarTokenAsync("corrected-token");
@@ -156,14 +181,14 @@ public sealed class DevicesHubTests : IntegrationTestBase
         await using var listener = await ListenAsync();
         await ConfigureTraccarTokenAsync();
         var first = await TraccarSocket.WaitForConnectionAsync(TestContext.Current.CancellationToken);
-        await listener.WaitForStatusAsync(connected: true);
+        await listener.WaitForStatusAsync(Connected);
 
         first.Drop();
 
-        await listener.WaitForStatusAsync(connected: false);
+        await listener.WaitForStatusAsync(Unavailable);
         var second = await TraccarSocket.WaitForConnectionAsync(TestContext.Current.CancellationToken);
         second.Token.ShouldBe("stored-token");
-        await listener.WaitForStatusAsync(connected: true);
+        await listener.WaitForStatusAsync(Connected);
     }
 
     [Fact]
@@ -211,7 +236,7 @@ public sealed class DevicesHubTests : IntegrationTestBase
         return listener;
     }
 
-    private HubConnection CreateHubConnection(User? user, DateTimeOffset? signInExpiresAt = null) =>
+    private HubConnection CreateHubConnection(User? user, DateTimeOffset? signInExpiresAt = null, string? origin = null) =>
         new HubConnectionBuilder()
             .WithUrl(new Uri(Factory.Server.BaseAddress, DevicesHub.Route), options =>
             {
@@ -220,9 +245,14 @@ public sealed class DevicesHubTests : IntegrationTestBase
                 options.WebSocketFactory = async (context, cancellationToken) =>
                 {
                     var webSocketClient = Factory.Server.CreateWebSocketClient();
-                    if (user is not null)
+                    webSocketClient.ConfigureRequest = request =>
                     {
-                        webSocketClient.ConfigureRequest = request =>
+                        if (origin is not null)
+                        {
+                            request.Headers.Origin = origin;
+                        }
+
+                        if (user is not null)
                         {
                             request.Headers[TestAuthDefaults.UserIdHeader] = user.Id.ToString();
                             request.Headers[TestAuthDefaults.EmailHeader] = user.Email;
@@ -232,8 +262,8 @@ public sealed class DevicesHubTests : IntegrationTestBase
                             {
                                 request.Headers[TestAuthDefaults.ExpiresAtHeader] = signInExpiresAt.Value.ToString("O");
                             }
-                        };
-                    }
+                        }
+                    };
 
                     return await webSocketClient.ConnectAsync(context.Uri, cancellationToken);
                 };
@@ -258,15 +288,6 @@ public sealed class DevicesHubTests : IntegrationTestBase
         return timeout.Token;
     }
 
-    private static async Task WaitUntilAsync(Func<bool> condition)
-    {
-        var cancellationToken = Timeout();
-        while (!condition())
-        {
-            await Task.Delay(TimeSpan.FromMilliseconds(20), cancellationToken);
-        }
-    }
-
     private sealed class HubListener : IAsyncDisposable
     {
         public HubListener(HubConnection connection)
@@ -282,16 +303,11 @@ public sealed class DevicesHubTests : IntegrationTestBase
         public Channel<List<PositionResponse>> Positions { get; } = Channel.CreateUnbounded<List<PositionResponse>>();
         public Channel<List<DeviceStatusResponse>> Devices { get; } = Channel.CreateUnbounded<List<DeviceStatusResponse>>();
 
-        public async Task<TraccarConnectionStatusResponse> WaitForStatusAsync(bool connected)
+        public async Task WaitForStatusAsync(TraccarConnectionStatusResponse expected)
         {
             var cancellationToken = Timeout();
-            while (true)
+            while (await Statuses.Reader.ReadAsync(cancellationToken) != expected)
             {
-                var status = await Statuses.Reader.ReadAsync(cancellationToken);
-                if (status.Connected == connected)
-                {
-                    return status;
-                }
             }
         }
 

@@ -19,7 +19,8 @@ public sealed class DevicesHub(DevicesHubPublisher publisher, DevicesHubConnecti
     public override Task OnConnectedAsync()
     {
         connections.Add(Context);
-        return Clients.Caller.TraccarConnectionChanged(new TraccarConnectionStatusResponse(publisher.IsConnected));
+        publisher.SendCurrentStatusTo(Context.ConnectionId);
+        return Task.CompletedTask;
     }
 
     public override Task OnDisconnectedAsync(Exception? exception)

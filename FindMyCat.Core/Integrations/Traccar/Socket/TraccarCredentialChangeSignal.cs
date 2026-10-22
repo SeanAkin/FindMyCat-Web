@@ -1,6 +1,8 @@
+using FindMyCat.Core.Services;
+
 namespace FindMyCat.Core.Integrations.Traccar.Socket;
 
-public sealed class TraccarCredentialChangeSignal
+public sealed class TraccarCredentialChangeSignal : ITraccarCredentialChangeNotifier
 {
     private CancellationTokenSource _changed = new();
 
