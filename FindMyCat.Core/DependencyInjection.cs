@@ -19,7 +19,6 @@ public static class DependencyInjection
         services.AddScoped<ITraccarService, TraccarService>();
         services.AddSingleton<TraccarCredentialChangeSignal>();
         services.AddSingleton<ITraccarCredentialChangeNotifier>(sp => sp.GetRequiredService<TraccarCredentialChangeSignal>());
-        services.AddSingleton<TraccarSessionStore>();
         services.AddScoped<IHologramService, HologramService>();
         services.AddTransient<TraccarTransportExceptionHandler>();
         services.AddTransient<HologramTransportExceptionHandler>();

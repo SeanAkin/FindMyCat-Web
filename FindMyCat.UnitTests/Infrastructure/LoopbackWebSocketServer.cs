@@ -10,7 +10,7 @@ internal sealed class LoopbackWebSocketServer : IAsyncDisposable
     private const string Rfc6455AcceptKeyGuid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
     private readonly TcpListener _listener = new(IPAddress.Loopback, 0);
-    private readonly TaskCompletionSource<IReadOnlyDictionary<string, string>> _upgradeRequestHeaders =
+    private readonly TaskCompletionSource<UpgradeRequest> _upgradeRequest =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Task _accepting;
     private TcpClient? _client;
@@ -24,7 +24,7 @@ internal sealed class LoopbackWebSocketServer : IAsyncDisposable
 
     public Uri BaseAddress { get; }
 
-    public Task<IReadOnlyDictionary<string, string>> UpgradeRequestHeaders => _upgradeRequestHeaders.Task;
+    public Task<UpgradeRequest> ReceivedUpgradeRequest => _upgradeRequest.Task;
 
     private async Task AcceptUpgradeAsync()
     {
@@ -32,25 +32,25 @@ internal sealed class LoopbackWebSocketServer : IAsyncDisposable
         {
             _client = await _listener.AcceptTcpClientAsync();
             var stream = _client.GetStream();
-            var headers = await ReadRequestHeadersAsync(stream);
+            var request = await ReadRequestAsync(stream);
 
             var acceptKey = Convert.ToBase64String(
-                SHA1.HashData(Encoding.ASCII.GetBytes(headers["Sec-WebSocket-Key"] + Rfc6455AcceptKeyGuid)));
+                SHA1.HashData(Encoding.ASCII.GetBytes(request.Headers["Sec-WebSocket-Key"] + Rfc6455AcceptKeyGuid)));
             await stream.WriteAsync(Encoding.ASCII.GetBytes(
                 "HTTP/1.1 101 Switching Protocols\r\n" +
                 "Upgrade: websocket\r\n" +
                 "Connection: Upgrade\r\n" +
                 $"Sec-WebSocket-Accept: {acceptKey}\r\n\r\n"));
 
-            _upgradeRequestHeaders.TrySetResult(headers);
+            _upgradeRequest.TrySetResult(request);
         }
         catch (Exception ex)
         {
-            _upgradeRequestHeaders.TrySetException(ex);
+            _upgradeRequest.TrySetException(ex);
         }
     }
 
-    private static async Task<IReadOnlyDictionary<string, string>> ReadRequestHeadersAsync(NetworkStream stream)
+    private static async Task<UpgradeRequest> ReadRequestAsync(NetworkStream stream)
     {
         var received = new StringBuilder();
         var buffer = new byte[1024];
@@ -65,13 +65,18 @@ internal sealed class LoopbackWebSocketServer : IAsyncDisposable
             received.Append(Encoding.ASCII.GetString(buffer, 0, read));
         }
 
-        return received.ToString()
-            .Split("\r\n")
+        var lines = received.ToString().Split("\r\n");
+        var target = lines[0].Split(' ')[1];
+        var headers = lines
             .Skip(1)
             .TakeWhile(line => line.Length > 0)
             .Select(line => line.Split(':', 2))
             .ToDictionary(header => header[0].Trim(), header => header[1].Trim(), StringComparer.OrdinalIgnoreCase);
+
+        return new UpgradeRequest(target, headers);
     }
+
+    public sealed record UpgradeRequest(string Target, IReadOnlyDictionary<string, string> Headers);
 
     public async ValueTask DisposeAsync()
     {
