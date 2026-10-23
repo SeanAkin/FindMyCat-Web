@@ -18,6 +18,7 @@ public class TraccarSocketRelayTests
     private readonly Mock<ITraccarUpdatePublisher> _publisher = new();
     private readonly TraccarCredentialChangeSignal _credentialChangeSignal = new();
     private readonly Channel<StubConnection> _connections = Channel.CreateUnbounded<StubConnection>();
+    private readonly Mock<IServiceScope> _scope = new();
     private readonly TraccarSocketRelay _sut;
 
     public TraccarSocketRelayTests()
@@ -28,10 +29,9 @@ public class TraccarSocketRelayTests
         var services = new Mock<IServiceProvider>();
         services.Setup(s => s.GetService(typeof(ICredentialService))).Returns(_credentials.Object);
         services.Setup(s => s.GetService(typeof(ITraccarSocketClient))).Returns(_socketClient.Object);
-        var scope = new Mock<IServiceScope>();
-        scope.Setup(s => s.ServiceProvider).Returns(services.Object);
+        _scope.Setup(s => s.ServiceProvider).Returns(services.Object);
         var scopeFactory = new Mock<IServiceScopeFactory>();
-        scopeFactory.Setup(f => f.CreateScope()).Returns(scope.Object);
+        scopeFactory.Setup(f => f.CreateScope()).Returns(_scope.Object);
 
         _sut = new TraccarSocketRelay(
             scopeFactory.Object,
@@ -138,6 +138,22 @@ public class TraccarSocketRelayTests
 
         (await published.Reader.ReadAsync(Timeout())).ShouldBe(TraccarConnectionStatus.Up);
         _socketClient.Verify(c => c.ConnectAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        await _sut.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task The_scope_used_to_connect_is_disposed_while_the_connection_stays_open()
+    {
+        var published = Channel.CreateUnbounded<TraccarConnectionStatus>();
+        _publisher.Setup(p => p.PublishConnectionChangedAsync(It.IsAny<TraccarConnectionStatus>(), It.IsAny<CancellationToken>()))
+            .Callback<TraccarConnectionStatus, CancellationToken>((status, _) => published.Writer.TryWrite(status))
+            .Returns(Task.CompletedTask);
+
+        await _sut.StartAsync(TestContext.Current.CancellationToken);
+        (await published.Reader.ReadAsync(Timeout())).ShouldBe(TraccarConnectionStatus.Up);
+
+        _scope.Verify(s => s.Dispose(), Times.Once);
+        _socketClient.Verify(c => c.ConnectAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
         await _sut.StopAsync(TestContext.Current.CancellationToken);
     }
 

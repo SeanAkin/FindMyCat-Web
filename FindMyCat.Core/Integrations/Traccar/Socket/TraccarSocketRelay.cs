@@ -65,17 +65,12 @@ public sealed class TraccarSocketRelay(
 
         try
         {
-            await using var scope = scopeFactory.CreateAsyncScope();
-
-            var token = await scope.ServiceProvider.GetRequiredService<ICredentialService>().GetTraccarTokenAsync(cancellationToken);
-            if (string.IsNullOrEmpty(token))
+            await using var connection = await OpenConnectionAsync(cancellationToken);
+            if (connection is null)
             {
                 logger.LogInformation("Traccar is not configured; live updates will start once a token is added.");
                 return ConnectionOutcome.NotConfigured;
             }
-
-            var socketClient = scope.ServiceProvider.GetRequiredService<ITraccarSocketClient>();
-            await using var connection = await socketClient.ConnectAsync(token, cancellationToken);
 
             connectedAt = Stopwatch.GetTimestamp();
             logger.LogInformation("Connected to the Traccar socket.");
@@ -110,6 +105,21 @@ public sealed class TraccarSocketRelay(
             logger.LogError(ex, "Unexpected failure in the Traccar socket connection.");
             return OutcomeOfDroppedConnection(connectedAt);
         }
+    }
+
+    // The connection can stay open for days, so the scope (and the DbContext behind ICredentialService)
+    // must not outlive the connect.
+    private async Task<ITraccarSocketConnection?> OpenConnectionAsync(CancellationToken cancellationToken)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+
+        var token = await scope.ServiceProvider.GetRequiredService<ICredentialService>().GetTraccarTokenAsync(cancellationToken);
+        if (string.IsNullOrEmpty(token))
+        {
+            return null;
+        }
+
+        return await scope.ServiceProvider.GetRequiredService<ITraccarSocketClient>().ConnectAsync(token, cancellationToken);
     }
 
     private static TraccarConnectionStatus? StatusAfter(ConnectionOutcome outcome) => outcome switch
