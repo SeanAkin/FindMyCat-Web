@@ -33,6 +33,7 @@ public sealed class ErrorCodeValueTests
         nameof(ErrorCodes.TraccarNotConfigured) => "traccar_not_configured",
         nameof(ErrorCodes.TraccarCredentialRejected) => "traccar_credential_rejected",
         nameof(ErrorCodes.TraccarUnavailable) => "traccar_unavailable",
+        nameof(ErrorCodes.LiveUpdatesDisabled) => "live_updates_disabled",
         nameof(ErrorCodes.HologramNotConfigured) => "hologram_not_configured",
         nameof(ErrorCodes.HologramDeviceNotFound) => "hologram_device_not_found",
         nameof(ErrorCodes.HologramCredentialRejected) => "hologram_credential_rejected",

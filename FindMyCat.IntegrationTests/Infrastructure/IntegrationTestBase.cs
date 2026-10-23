@@ -7,6 +7,7 @@ using FindMyCat.Core.Entities;
 using FindMyCat.Data;
 using FindMyCat.IntegrationTests.Stubs;
 using Microsoft.Extensions.DependencyInjection;
+using FindMyCat.Core.Integrations.Traccar.Socket;
 
 namespace FindMyCat.IntegrationTests.Infrastructure;
 
@@ -28,6 +29,7 @@ public abstract class IntegrationTestBase : IClassFixture<FindMyCatApiFactory>, 
 
     protected StubTraccarClient Traccar => Factory.TraccarClient;
     protected StubHologramClient Hologram => Factory.HologramClient;
+    protected StubTraccarSocketClient TraccarSocket => Factory.TraccarSocketClient;
 
     protected IntegrationTestBase(FindMyCatApiFactory factory, ITestOutputHelper output)
     {
@@ -37,6 +39,7 @@ public abstract class IntegrationTestBase : IClassFixture<FindMyCatApiFactory>, 
         _scope = factory.Services.CreateScope();
         factory.TraccarClient.Reset();
         factory.HologramClient.Reset();
+        factory.TraccarSocketClient.Reset();
         ResetSharedCredentialVault();
     }
 

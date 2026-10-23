@@ -25,7 +25,11 @@ public interface ICredentialService
     Task<string?> GetHologramKeyAsync(CancellationToken cancellationToken = default);
 }
 
-public sealed class CredentialService(ISharedCredentialRepository credentialRepository, ICredentialProtector protector, ILogger<CredentialService> logger) : ICredentialService
+public sealed class CredentialService(
+    ISharedCredentialRepository credentialRepository,
+    ICredentialProtector protector,
+    ITraccarCredentialChangeNotifier traccarCredentialChangeNotifier,
+    ILogger<CredentialService> logger) : ICredentialService
 {
     public async Task<CredentialStatus> GetStatusAsync(CancellationToken cancellationToken = default)
     {
@@ -45,6 +49,7 @@ public sealed class CredentialService(ISharedCredentialRepository credentialRepo
         var credential = await GetOrCreateAsync(cancellationToken);
         credential.TraccarApiTokenProtected = protector.Encrypt(apiToken);
         await SaveAsync(credential, cancellationToken);
+        traccarCredentialChangeNotifier.NotifyChanged();
     }
 
     public async Task SetHologramKeyAsync(string apiKey, CancellationToken cancellationToken = default)
@@ -64,6 +69,7 @@ public sealed class CredentialService(ISharedCredentialRepository credentialRepo
 
         credential.TraccarApiTokenProtected = null;
         await SaveAsync(credential, cancellationToken);
+        traccarCredentialChangeNotifier.NotifyChanged();
     }
 
     public async Task DeleteHologramKeyAsync(CancellationToken cancellationToken = default)

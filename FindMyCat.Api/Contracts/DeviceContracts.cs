@@ -1,4 +1,5 @@
 ﻿using FindMyCat.Core.Integrations.Traccar;
+using FindMyCat.Core.Integrations.Traccar.Socket;
 
 namespace FindMyCat.Api.Contracts;
 
@@ -54,3 +55,26 @@ public sealed record PositionResponse(
 
 public sealed record HistoryRangeRequest(DateTimeOffset? From, DateTimeOffset? To);
 
+public sealed record DeviceStatusResponse(
+    long Id,
+    string Name,
+    string UniqueId,
+    string Status,
+    DateTimeOffset? LastUpdate,
+    bool Disabled)
+{
+    public static DeviceStatusResponse FromDomain(TraccarDevice device) => new(
+        device.Id,
+        device.Name,
+        device.UniqueId,
+        device.Status,
+        device.LastUpdate,
+        device.Disabled);
+}
+
+public sealed record TraccarConnectionStatusResponse(bool Connected, string? Code)
+{
+    public static TraccarConnectionStatusResponse FromDomain(TraccarConnectionStatus status) => new(
+        status.Connected,
+        status.ErrorCode);
+}

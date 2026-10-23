@@ -150,6 +150,7 @@ Using a platform that manages volumes for you, like Dokploy, Coolify, or a Kuber
 | --- | --- | --- | --- |
 | `FINDMYCAT_ENCRYPTION_KEY` | Yes | None | Base64-encoded 32-byte key used to encrypt stored Traccar/Hologram credentials. Generate one with `openssl rand -base64 32`. |
 | `Traccar__BaseUrl` | Yes | None | Base URL of your Traccar server, e.g. `https://traccar.example.com`. |
+| `Traccar__LiveUpdates__Enabled` | No | `true` | Set to `false` to turn off live updates from Traccar. The app keeps working by polling. |
 | `ConnectionStrings__Default` | No | `Data Source=findmycat.db` | SQLite connection string. Point this at a mounted volume in production. |
 | `Authentication__Google__Enabled` | No | `true` | Set to `false` to disable Google sign-in entirely. This removes the button on the frontend and the provider on the backend. |
 | `Authentication__Google__ClientId` | Only if Google auth is enabled | None | OAuth client ID from the Google Cloud Console. |
@@ -168,6 +169,15 @@ Authentication__Google__ClientId=your-client-id.apps.googleusercontent.com
 Authentication__Google__ClientSecret=your-client-secret
 ASPNETCORE_ENVIRONMENT=Production
 ```
+### Live updates
+
+FindMyCat keeps one WebSocket connection open to Traccar, using the stored API token, and pushes position and device status changes to signed-in browsers over SignalR at `/hubs/devices`. It reconnects on its own if Traccar restarts or the network drops.
+
+- Live updates need Traccar 6.2 or newer. On older versions the connection fails and the app keeps working by polling. Set `Traccar__LiveUpdates__Enabled=false` to stop it retrying.
+- Your reverse proxy must allow WebSocket upgrades to FindMyCat. Traefik and Caddy do this by default. With nginx, forward the `Upgrade` and `Connection` headers.
+- The hub only accepts browser connections from the address FindMyCat is served on, so your reverse proxy must pass the original `Host` header and set `X-Forwarded-Proto`. Traefik and Caddy do this by default. With nginx, add `proxy_set_header Host $host;` and `proxy_set_header X-Forwarded-Proto $scheme;`.
+- If FindMyCat and Traccar share a Docker network, point `Traccar__BaseUrl` at Traccar's internal service name (e.g. `http://traccar:8082`) so the connection doesn't leave the host.
+
 ### Key Rotation
 The `FINDMYCAT_ENCRYPTION_KEY` can be rotated by updating the env var value and restarting the docker container. This will invalidate the existing values and require you to re-enter them on the admin page. This key is not used for username and passwords which are hashed.
 

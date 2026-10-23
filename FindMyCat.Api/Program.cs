@@ -1,4 +1,5 @@
 using FindMyCat.Api.Extensions;
+using FindMyCat.Api.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,7 +41,10 @@ if (isTestingEnvironment)
     app.UseRateLimiter();
 }
 
+app.RejectCrossOriginHubRequests();
+
 app.MapControllers();
+app.MapHub<DevicesHub>(DevicesHub.Route, options => options.CloseOnAuthenticationExpiration = true);
 
 app.MapFallbackToFile("index.html").AllowAnonymous();
 

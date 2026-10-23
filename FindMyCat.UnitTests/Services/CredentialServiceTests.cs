@@ -14,11 +14,12 @@ public class CredentialServiceTests
     private readonly Mock<ISharedCredentialRepository> _repository = new();
     private readonly AesGcmCredentialProtector _protector =
         new(RandomNumberGenerator.GetBytes(AesGcmCredentialProtector.KeySizeBytes));
+    private readonly Mock<ITraccarCredentialChangeNotifier> _traccarCredentialChangeNotifier = new();
     private readonly CredentialService _sut;
 
     public CredentialServiceTests()
     {
-        _sut = new CredentialService(_repository.Object, _protector, NullLogger<CredentialService>.Instance);
+        _sut = new CredentialService(_repository.Object, _protector, _traccarCredentialChangeNotifier.Object, NullLogger<CredentialService>.Instance);
     }
 
     [Fact]
@@ -160,5 +161,32 @@ public class CredentialServiceTests
         var token = await _sut.GetTraccarTokenAsync(TestContext.Current.CancellationToken);
 
         token.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task SetTraccarTokenAsync_SignalsTraccarCredentialChange()
+    {
+        await _sut.SetTraccarTokenAsync("secret-token", TestContext.Current.CancellationToken);
+
+        _traccarCredentialChangeNotifier.Verify(n => n.NotifyChanged(), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteTraccarTokenAsync_SignalsTraccarCredentialChange()
+    {
+        _repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SharedCredential { TraccarApiTokenProtected = _protector.Encrypt("traccar") });
+
+        await _sut.DeleteTraccarTokenAsync(TestContext.Current.CancellationToken);
+
+        _traccarCredentialChangeNotifier.Verify(n => n.NotifyChanged(), Times.Once);
+    }
+
+    [Fact]
+    public async Task SetHologramKeyAsync_DoesNotSignalTraccarCredentialChange()
+    {
+        await _sut.SetHologramKeyAsync("secret-key", TestContext.Current.CancellationToken);
+
+        _traccarCredentialChangeNotifier.Verify(n => n.NotifyChanged(), Times.Never);
     }
 }

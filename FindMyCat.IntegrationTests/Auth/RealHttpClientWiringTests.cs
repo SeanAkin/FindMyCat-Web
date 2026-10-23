@@ -1,5 +1,6 @@
 using FindMyCat.Core.Integrations.Hologram;
 using FindMyCat.Core.Integrations.Traccar;
+using FindMyCat.Core.Integrations.Traccar.Socket;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FindMyCat.IntegrationTests.Auth;
@@ -19,6 +20,14 @@ public sealed class RealHttpClientWiringTests : IClassFixture<RealAuthSchemeWiri
         using var scope = _factory.Services.CreateScope();
 
         Should.NotThrow(() => scope.ServiceProvider.GetRequiredService<ITraccarClient>());
+    }
+
+    [Fact]
+    public void Traccar_socket_typed_client_resolves()
+    {
+        using var scope = _factory.Services.CreateScope();
+
+        Should.NotThrow(() => scope.ServiceProvider.GetRequiredService<ITraccarSocketClient>());
     }
 
     [Fact]

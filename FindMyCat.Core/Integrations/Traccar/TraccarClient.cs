@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 
 using FindMyCat.Core.Errors;
@@ -19,26 +18,17 @@ public interface ITraccarClient
 
 public sealed class TraccarClient(HttpClient httpClient, ILogger<TraccarClient> logger) : ITraccarClient
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-
     public async Task<IReadOnlyList<TraccarDevice>> GetDevicesWithPositionsAsync(string token, CancellationToken cancellationToken = default)
     {
-        var devices = await GetAsync<List<DeviceDto>>(token, "api/devices", cancellationToken) ?? [];
-        var latestPositions = await GetAsync<List<PositionDto>>(token, "api/positions", cancellationToken) ?? [];
+        var devices = await GetAsync<List<TraccarDeviceDto>>(token, "api/devices", cancellationToken) ?? [];
+        var latestPositions = await GetAsync<List<TraccarPositionDto>>(token, "api/positions", cancellationToken) ?? [];
 
         var latestByDevice = latestPositions
             .GroupBy(p => p.DeviceId)
-            .ToDictionary(g => g.Key, g => MapPosition(g.First()));
+            .ToDictionary(g => g.Key, g => g.First().ToDomain());
 
         return devices
-            .Select(d => new TraccarDevice(
-                d.Id,
-                d.Name ?? string.Empty,
-                d.UniqueId ?? string.Empty,
-                d.Status ?? "unknown",
-                d.LastUpdate,
-                d.Disabled,
-                latestByDevice.GetValueOrDefault(d.Id)))
+            .Select(d => d.ToDomain(latestByDevice.GetValueOrDefault(d.Id)))
             .ToList();
     }
 
@@ -55,8 +45,8 @@ public sealed class TraccarClient(HttpClient httpClient, ILogger<TraccarClient> 
             query += $"&from={FormatInstant(from.Value)}&to={FormatInstant(to.Value)}";
         }
 
-        var positions = await GetAsync<List<PositionDto>>(token, query, cancellationToken) ?? [];
-        return positions.Select(MapPosition).ToList();
+        var positions = await GetAsync<List<TraccarPositionDto>>(token, query, cancellationToken) ?? [];
+        return positions.Select(p => p.ToDomain()).ToList();
     }
 
     private async Task<T?> GetAsync<T>(string token, string relativeUri, CancellationToken cancellationToken)
@@ -79,7 +69,7 @@ public sealed class TraccarClient(HttpClient httpClient, ILogger<TraccarClient> 
 
         try
         {
-            return await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken);
+            return await response.Content.ReadFromJsonAsync<T>(TraccarWireFormat.JsonOptions, cancellationToken);
         }
         catch (JsonException ex)
         {
@@ -88,47 +78,6 @@ public sealed class TraccarClient(HttpClient httpClient, ILogger<TraccarClient> 
         }
     }
 
-    private static TraccarPosition MapPosition(PositionDto p) => new(
-        p.DeviceId,
-        p.FixTime,
-        p.DeviceTime,
-        p.ServerTime,
-        p.Latitude,
-        p.Longitude,
-        p.Altitude,
-        p.Speed,
-        p.Course,
-        p.Accuracy,
-        p.Valid,
-        p.Attributes?.BatteryLevel,
-        p.Attributes?.Sat);
-
     private static string FormatInstant(DateTimeOffset value) =>
         Uri.EscapeDataString(value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
-
-    private sealed record DeviceDto(
-        long Id,
-        string? Name,
-        string? UniqueId,
-        string? Status,
-        DateTimeOffset? LastUpdate,
-        bool Disabled);
-
-    private sealed record PositionDto(
-        long DeviceId,
-        DateTimeOffset FixTime,
-        DateTimeOffset DeviceTime,
-        DateTimeOffset ServerTime,
-        double Latitude,
-        double Longitude,
-        double Altitude,
-        double Speed,
-        double Course,
-        double Accuracy,
-        bool Valid,
-        PositionAttributesDto? Attributes);
-
-    private sealed record PositionAttributesDto(
-        [property: JsonPropertyName("batteryLevel")] double? BatteryLevel,
-        [property: JsonPropertyName("sat")] double? Sat);
 }

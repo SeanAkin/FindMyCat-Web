@@ -1,8 +1,13 @@
+using FindMyCat.Api.Hubs;
+using FindMyCat.Api.Json;
 using FindMyCat.Core;
 using FindMyCat.Core.Integrations.Hologram;
 using FindMyCat.Core.Integrations.Traccar;
+using FindMyCat.Core.Integrations.Traccar.Socket;
 using FindMyCat.Core.Security;
+using FindMyCat.Core.Services;
 using FindMyCat.Data;
+using Microsoft.AspNetCore.SignalR;
 
 namespace FindMyCat.Api.Extensions;
 
@@ -14,6 +19,7 @@ public static class CoreServiceCollectionExtensions
         services.AddFindMyCatData(configuration);
         services.AddCredentialProtection(configuration);
         services.AddIntegrationClients(configuration);
+        services.AddLiveUpdates(configuration);
 
         return services;
     }
@@ -46,10 +52,37 @@ public static class CoreServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(15);
         }).AddHttpMessageHandler<TraccarTransportExceptionHandler>();
 
+        services.AddHttpClient<ITraccarSocketClient, TraccarSocketClient>(client =>
+        {
+            client.BaseAddress = traccarBaseAddressWithResolvableRelativePaths;
+            client.Timeout = TimeSpan.FromSeconds(15);
+        }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false });
+
         services.AddHttpClient<IHologramClient, HologramClient>(client =>
         {
             client.BaseAddress = new Uri("https://dashboard.hologram.io/");
             client.Timeout = TimeSpan.FromSeconds(15);
         }).AddHttpMessageHandler<HologramTransportExceptionHandler>();
+    }
+
+    private static void AddLiveUpdates(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddSignalR()
+            .AddJsonProtocol(options => ApiJsonOptions.Configure(options.PayloadSerializerOptions));
+
+        var liveUpdatesEnabled = configuration.GetValue("Traccar:LiveUpdates:Enabled", true);
+
+        services.AddSingleton(sp => new DevicesHubPublisher(
+            sp.GetRequiredService<IHubContext<DevicesHub, IDevicesClient>>(),
+            sp.GetRequiredService<ILogger<DevicesHubPublisher>>(),
+            liveUpdatesEnabled ? TraccarConnectionStatus.Unavailable : TraccarConnectionStatus.LiveUpdatesDisabled));
+        services.AddSingleton<ITraccarUpdatePublisher>(sp => sp.GetRequiredService<DevicesHubPublisher>());
+        services.AddSingleton<DevicesHubConnections>();
+        services.AddSingleton<IConnectedClients>(sp => sp.GetRequiredService<DevicesHubConnections>());
+
+        if (liveUpdatesEnabled)
+        {
+            services.AddHostedService<TraccarSocketRelay>();
+        }
     }
 }

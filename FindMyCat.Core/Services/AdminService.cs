@@ -17,7 +17,10 @@ public interface IAdminService
     Task SetUserRoleAsync(Guid userId, UserRole role, CancellationToken cancellationToken = default);
 }
 
-public sealed class AdminService(IAllowedEmailRepository allowedEmailRepository, IUserRepository userRepository) : IAdminService
+public sealed class AdminService(
+    IAllowedEmailRepository allowedEmailRepository,
+    IUserRepository userRepository,
+    IConnectedClients connectedClients) : IAdminService
 {
     public Task<IReadOnlyList<AllowedEmail>> ListAllowedEmailsAsync(CancellationToken cancellationToken = default) =>
         allowedEmailRepository.ListAsync(cancellationToken);
@@ -35,6 +38,10 @@ public sealed class AdminService(IAllowedEmailRepository allowedEmailRepository,
 
         var removedPendingInvite = await allowedEmailRepository.RemoveAsync(email, cancellationToken);
         var removedActiveAccount = user is not null && await userRepository.DeleteAsync(user.Id, cancellationToken);
+        if (user is not null && removedActiveAccount)
+        {
+            connectedClients.DisconnectUser(user.Id);
+        }
 
         if (!removedPendingInvite && !removedActiveAccount)
         {
