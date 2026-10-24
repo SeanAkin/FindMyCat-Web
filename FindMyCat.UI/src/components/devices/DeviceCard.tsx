@@ -7,8 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { TimeAgo } from '@/components/TimeAgo'
 import type { DeviceResponse } from '@/api/types'
-import { formatTimeAgo } from '@/lib/timeAgo'
 import { cn } from '@/lib/utils'
 
 interface DeviceCardProps {
@@ -52,9 +52,11 @@ export function DeviceCard({ device, selected, onSelect }: DeviceCardProps) {
             : 'No fix yet'}
         </div>
         <div>
-          {device.lastUpdate
-            ? formatTimeAgo(new Date(device.lastUpdate))
-            : 'Never reported'}
+          {device.lastUpdate ? (
+            <TimeAgo date={device.lastUpdate} />
+          ) : (
+            'Never reported'
+          )}
         </div>
       </CardContent>
     </Card>

@@ -5,6 +5,7 @@ import '@/components/map/leaflet-theme.css'
 import { PawPrint } from 'lucide-react'
 import type { DeviceResponse } from '@/api/types'
 import { Skeleton } from '@/components/ui/skeleton'
+import { getClockNow, subscribeToClock } from '@/lib/clock'
 import { formatTimeAgo } from '@/lib/timeAgo'
 import { useDevicesStore } from '@/stores/devicesStore'
 import { useThemeStore } from '@/stores/themeStore'
@@ -55,16 +56,25 @@ function popupHtml(device: DeviceWithPosition): string {
       ? `${device.position.batteryLevel}%`
       : 'Unknown'
   const lastUpdate = device.lastUpdate
-    ? formatTimeAgo(new Date(device.lastUpdate))
-    : 'Never reported'
+    ? `<dd data-time-ago="${escapeHtml(device.lastUpdate)}">${escapeHtml(formatTimeAgo(new Date(device.lastUpdate)))}</dd>`
+    : '<dd>Never reported</dd>'
 
   return `<div class="device-popup">
     <p class="device-popup-title">${escapeHtml(device.name)}</p>
     <dl>
       <div><dt>Battery</dt><dd>${escapeHtml(battery)}</dd></div>
-      <div><dt>Last update</dt><dd>${escapeHtml(lastUpdate)}</dd></div>
+      <div><dt>Last update</dt>${lastUpdate}</div>
     </dl>
   </div>`
+}
+
+function refreshTimeAgoText(popupElement: HTMLElement, now: Date) {
+  for (const element of popupElement.querySelectorAll<HTMLElement>(
+    '[data-time-ago]',
+  )) {
+    const { timeAgo } = element.dataset
+    if (timeAgo) element.textContent = formatTimeAgo(new Date(timeAgo), now)
+  }
 }
 
 export function DeviceMap() {
@@ -181,6 +191,20 @@ export function DeviceMap() {
       }
     }
   }, [devicesWithPosition, selectedDeviceId, selectDevice])
+
+  useEffect(
+    () =>
+      subscribeToClock(() => {
+        const now = new Date(getClockNow())
+        for (const marker of markersRef.current.values()) {
+          const popupElement = marker.getPopup()?.getElement()
+          if (marker.isPopupOpen() && popupElement) {
+            refreshTimeAgoText(popupElement, now)
+          }
+        }
+      }),
+    [],
+  )
 
   // Selecting a device (from the list or a marker click) focuses its marker.
   useEffect(() => {
