@@ -1,7 +1,14 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import App from './App'
 import { useAuthStore } from '@/stores/authStore'
+
+vi.mock('@/api/devicesHub', () => ({
+  createDevicesHubConnection: () => ({
+    start: () => new Promise<void>(() => {}),
+    stop: () => Promise.resolve(),
+  }),
+}))
 
 describe('App', () => {
   afterEach(() => {

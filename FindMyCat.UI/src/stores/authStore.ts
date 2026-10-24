@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { getAuthProviders, getSession, logout as logoutRequest } from '@/api/auth'
 import { ApiError, onUnauthorized } from '@/api/http'
 import type { AuthProviderName, SessionResponse } from '@/api/types'
+import { useDevicesStore } from '@/stores/devicesStore'
 
 export type AuthStatus =
   'loading' | 'authenticated' | 'unauthenticated' | 'error'
@@ -37,12 +38,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   signIn: (user) => set({ status: 'authenticated', user }),
   logout: async () => {
+    useDevicesStore.getState().stopLiveUpdates()
     await logoutRequest().catch(() => {})
     set({ status: 'unauthenticated', user: null })
   },
 }))
 
 onUnauthorized(() => {
+  useDevicesStore.getState().stopLiveUpdates()
   useAuthStore.setState({ status: 'unauthenticated', user: null })
 })
 

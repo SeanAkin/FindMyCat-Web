@@ -18,12 +18,15 @@ export default defineConfig({
     },
   },
   server: {
-    proxy: Object.fromEntries(
-      sameOriginProxiedPrefixes.map((prefix) => [
-        prefix,
-        proxyPreservingClientFacingHostHeader,
-      ]),
-    ),
+    proxy: {
+      ...Object.fromEntries(
+        sameOriginProxiedPrefixes.map((prefix) => [
+          prefix,
+          proxyPreservingClientFacingHostHeader,
+        ]),
+      ),
+      '/hubs': { ...proxyPreservingClientFacingHostHeader, ws: true },
+    },
   },
   test: {
     environment: 'jsdom',
