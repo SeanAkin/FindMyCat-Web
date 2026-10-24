@@ -32,7 +32,13 @@ vi.mock('leaflet', () => {
     marker.on = vi.fn(() => marker)
     marker.setLatLng = vi.fn(() => marker)
     marker.setIcon = vi.fn(() => marker)
-    marker.bindPopup = vi.fn(() => marker)
+    const popupElement = document.createElement('div')
+    marker.bindPopup = vi.fn((html: string) => {
+      popupElement.innerHTML = html
+      return marker
+    })
+    marker.getPopup = vi.fn(() => ({ getElement: () => popupElement }))
+    marker.isPopupOpen = vi.fn(() => false)
     marker.openPopup = vi.fn(() => marker)
     marker.getLatLng = vi.fn(() => ({ lat: 1, lng: 2 }))
     marker.remove = vi.fn()
@@ -88,6 +94,7 @@ function device(overrides: Partial<DeviceResponse> = {}): DeviceResponse {
 
 describe('DeviceMap', () => {
   afterEach(() => {
+    vi.useRealTimers()
     vi.clearAllMocks()
     useDevicesStore.setState({
       devices: [],
@@ -185,6 +192,28 @@ describe('DeviceMap', () => {
 
     expect(map.flyTo).toHaveBeenCalled()
     expect(marker.openPopup).toHaveBeenCalled()
+  })
+
+  it('keeps an open popup last update counting up between device updates', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-16T11:00:30.000Z'))
+    useDevicesStore.setState({
+      status: 'success',
+      devices: [device({ id: 1 })],
+    })
+
+    render(<DeviceMap />)
+    const marker = vi.mocked(L.marker).mock.results[0]?.value as {
+      isPopupOpen: ReturnType<typeof vi.fn>
+      getPopup: () => { getElement: () => HTMLElement }
+    }
+    marker.isPopupOpen.mockReturnValue(true)
+    const popup = marker.getPopup().getElement()
+    expect(popup).toHaveTextContent('30s ago')
+
+    act(() => vi.advanceTimersByTime(15_000))
+
+    expect(popup).toHaveTextContent('45s ago')
   })
 
   it('clicking a marker selects the device', () => {

@@ -39,6 +39,19 @@ export interface DeviceResponse {
   position: PositionResponse | null
 }
 
+export type DeviceStatusResponse = Omit<DeviceResponse, 'position'>
+
+export type TraccarConnectionErrorCode =
+  | 'traccar_not_configured'
+  | 'traccar_credential_rejected'
+  | 'traccar_unavailable'
+  | 'live_updates_disabled'
+
+export interface TraccarConnectionStatusResponse {
+  connected: boolean
+  code: TraccarConnectionErrorCode | null
+}
+
 export interface CredentialStatusResponse {
   traccarConfigured: boolean
   hologramConfigured: boolean

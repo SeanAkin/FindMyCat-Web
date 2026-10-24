@@ -1,4 +1,5 @@
 import type { ApiError } from '@/api/http'
+import type { TraccarConnectionErrorCode } from '@/api/types'
 import { getGenericErrorMessage, type ErrorMessage } from '@/lib/apiErrors'
 
 export interface DeviceErrorMessage extends ErrorMessage {
@@ -7,8 +8,15 @@ export interface DeviceErrorMessage extends ErrorMessage {
   adminActionable: boolean
 }
 
-export function getDeviceErrorMessage(error: ApiError): DeviceErrorMessage {
-  switch (error.code) {
+export type TraccarProblemCode = Exclude<
+  TraccarConnectionErrorCode,
+  'live_updates_disabled'
+>
+
+export function getTraccarErrorMessage(
+  code: TraccarProblemCode,
+): DeviceErrorMessage {
+  switch (code) {
     case 'traccar_not_configured':
       return {
         variant: 'setup',
@@ -33,6 +41,15 @@ export function getDeviceErrorMessage(error: ApiError): DeviceErrorMessage {
         description:
           'Could not reach the tracking service. Try again in a moment.',
       }
+  }
+}
+
+export function getDeviceErrorMessage(error: ApiError): DeviceErrorMessage {
+  switch (error.code) {
+    case 'traccar_not_configured':
+    case 'traccar_credential_rejected':
+    case 'traccar_unavailable':
+      return getTraccarErrorMessage(error.code)
     case 'hologram_not_configured':
       return {
         variant: 'setup',

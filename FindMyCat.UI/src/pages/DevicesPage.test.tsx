@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render } from '@testing-library/react'
 import { DevicesPage } from '@/pages/DevicesPage'
 import { useDevicesStore } from '@/stores/devicesStore'
@@ -45,54 +45,16 @@ describe('DevicesPage', () => {
     })
   })
 
-  it('triggers fetchDevices once on mount', () => {
-    const fetchDevices = vi.fn()
-    useDevicesStore.setState({ fetchDevices })
+  it('starts live updates on mount and stops them on unmount', () => {
+    const startLiveUpdates = vi.fn()
+    const stopLiveUpdates = vi.fn()
+    useDevicesStore.setState({ startLiveUpdates, stopLiveUpdates })
 
-    render(<DevicesPage />)
+    const { unmount } = render(<DevicesPage />)
+    expect(startLiveUpdates).toHaveBeenCalledOnce()
+    expect(stopLiveUpdates).not.toHaveBeenCalled()
 
-    expect(fetchDevices).toHaveBeenCalledOnce()
-  })
-
-  describe('polling', () => {
-    beforeEach(() => {
-      vi.useFakeTimers()
-    })
-
-    afterEach(() => {
-      vi.useRealTimers()
-    })
-
-    it('re-fetches devices on an interval while the page is mounted', () => {
-      const fetchDevices = vi.fn()
-      useDevicesStore.setState({ fetchDevices })
-
-      const { unmount } = render(<DevicesPage />)
-      expect(fetchDevices).toHaveBeenCalledTimes(1)
-
-      vi.advanceTimersByTime(15_000)
-      expect(fetchDevices).toHaveBeenCalledTimes(2)
-
-      vi.advanceTimersByTime(15_000)
-      expect(fetchDevices).toHaveBeenCalledTimes(3)
-
-      unmount()
-      vi.advanceTimersByTime(30_000)
-      expect(fetchDevices).toHaveBeenCalledTimes(3)
-    })
-
-    it('skips the poll tick while the tab is hidden', () => {
-      const fetchDevices = vi.fn()
-      useDevicesStore.setState({ fetchDevices })
-      vi.spyOn(document, 'hidden', 'get').mockReturnValue(true)
-
-      render(<DevicesPage />)
-      expect(fetchDevices).toHaveBeenCalledTimes(1)
-
-      vi.advanceTimersByTime(15_000)
-      expect(fetchDevices).toHaveBeenCalledTimes(1)
-
-      vi.restoreAllMocks()
-    })
+    unmount()
+    expect(stopLiveUpdates).toHaveBeenCalledOnce()
   })
 })

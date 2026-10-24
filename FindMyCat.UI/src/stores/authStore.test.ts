@@ -67,6 +67,18 @@ describe('authStore', () => {
     expect(useAuthStore.getState().user).toBeNull()
   })
 
+  it('logout stops live updates', async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 204 }))
+    const { useAuthStore } = await import('./authStore')
+    const { useDevicesStore } = await import('./devicesStore')
+    const stopLiveUpdates = vi.fn()
+    useDevicesStore.setState({ stopLiveUpdates })
+
+    await useAuthStore.getState().logout()
+
+    expect(stopLiveUpdates).toHaveBeenCalledOnce()
+  })
+
   it('loadAuthProviders stores the provider list from the backend', async () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse(200, { providers: ['Password'] }))
     const { useAuthStore } = await import('./authStore')
@@ -99,5 +111,18 @@ describe('authStore', () => {
 
     expect(useAuthStore.getState().status).toBe('unauthenticated')
     expect(useAuthStore.getState().user).toBeNull()
+  })
+
+  it('a 401 from any api call stops live updates', async () => {
+    await import('./authStore')
+    const { useDevicesStore } = await import('./devicesStore')
+    const { api } = await import('@/api/http')
+    const stopLiveUpdates = vi.fn()
+    useDevicesStore.setState({ stopLiveUpdates })
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(401, {}))
+
+    await api.get('/api/devices').catch(() => {})
+
+    expect(stopLiveUpdates).toHaveBeenCalledOnce()
   })
 })

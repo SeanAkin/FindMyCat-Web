@@ -3,9 +3,9 @@ import type { ReactNode } from 'react'
 import { DeviceCommands } from '@/components/devices/DeviceCommands'
 import { DeviceHistoryPanel } from '@/components/devices/DeviceHistoryPanel'
 import { DeviceStatusBadge } from '@/components/devices/DeviceStatusBadge'
+import { TimeAgo } from '@/components/TimeAgo'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatTimeAgo } from '@/lib/timeAgo'
 import { useDevicesStore } from '@/stores/devicesStore'
 
 export function DeviceDetailPanel() {
@@ -76,7 +76,7 @@ export function DeviceDetailPanel() {
               <Stat
                 icon={<CalendarClock className="size-3.5" />}
                 label="Last fix"
-                value={formatTimeAgo(new Date(position.fixTime))}
+                value={<TimeAgo date={position.fixTime} />}
               />
               <Stat
                 label="Battery"
@@ -111,7 +111,7 @@ function Stat({
 }: {
   icon?: ReactNode
   label: string
-  value: string
+  value: ReactNode
 }) {
   return (
     <div className="flex flex-col gap-1">
