@@ -15,10 +15,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="FindMyCat.UnitTests" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\FindMyCat.Core\FindMyCat.Core.csproj" />
   </ItemGroup>
 

@@ -128,6 +128,39 @@ public sealed class DeviceTelemetryEndpointsTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Events_are_returned_newest_first()
+    {
+        var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
+        using var client = CreateAuthenticatedClient(user);
+        await ConfigureTraccarTokenAsync();
+        HaveDevice();
+        var first = await SeedAsync("command", """{"command":"ping"}""");
+        var second = await SeedAsync("network", """{"status":"ok"}""");
+        var third = await SeedAsync("command", """{"command":"lost"}""");
+
+        var events = await GetEventsAsync(client, "/api/devices/1/events");
+
+        var ids = events.EnumerateArray().Select(e => e.GetProperty("id").GetInt64()).ToList();
+        ids.ShouldBe([third.Id, second.Id, first.Id]);
+    }
+
+    [Fact]
+    public async Task Events_return_at_most_the_requested_limit()
+    {
+        var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
+        using var client = CreateAuthenticatedClient(user);
+        await ConfigureTraccarTokenAsync();
+        HaveDevice();
+        await SeedAsync("command", """{"command":"ping"}""");
+        await SeedAsync("command", """{"command":"ping"}""");
+        await SeedAsync("command", """{"command":"ping"}""");
+
+        var events = await GetEventsAsync(client, "/api/devices/1/events?limit=2");
+
+        events.GetArrayLength().ShouldBe(2);
+    }
+
+    [Fact]
     public async Task Events_page_with_the_after_cursor()
     {
         var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
