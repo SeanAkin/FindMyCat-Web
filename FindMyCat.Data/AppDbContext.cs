@@ -11,6 +11,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<SharedCredential> SharedCredentials => Set<SharedCredential>();
 
+    public DbSet<DeviceEvent> DeviceEvents => Set<DeviceEvent>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

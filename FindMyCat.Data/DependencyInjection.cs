@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IAllowedEmailRepository, AllowedEmailRepository>();
         services.AddScoped<ISharedCredentialRepository, SharedCredentialRepository>();
+        services.AddScoped<IDeviceEventRepository, DeviceEventRepository>();
 
         return services;
     }

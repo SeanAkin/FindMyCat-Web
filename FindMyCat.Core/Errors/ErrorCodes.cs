@@ -15,6 +15,8 @@ public static class ErrorCodes
     public const string UserNotFound = "user_not_found";
     public const string CredentialNotConfigured = "credential_not_configured";
 
+    public const string InvalidTelemetryPayload = "invalid_telemetry_payload";
+
     public const string DevicePositionNotFound = "device_position_not_found";
     public const string InvalidRange = "invalid_range";
     public const string RangeTooLarge = "range_too_large";
