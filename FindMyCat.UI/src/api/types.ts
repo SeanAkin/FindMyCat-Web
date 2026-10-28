@@ -55,6 +55,11 @@ export interface TraccarConnectionStatusResponse {
 export interface CredentialStatusResponse {
   traccarConfigured: boolean
   hologramConfigured: boolean
+  ingestConfigured: boolean
+}
+
+export interface IngestKeyResponse {
+  apiKey: string
 }
 
 export interface AllowedEmailResponse {
