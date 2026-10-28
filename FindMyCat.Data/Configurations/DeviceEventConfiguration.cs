@@ -10,8 +10,8 @@ public class DeviceEventConfiguration : IEntityTypeConfiguration<DeviceEvent>
     {
         builder.HasKey(e => e.Id);
 
-        builder.Property(e => e.UniqueId).IsRequired();
-        builder.Property(e => e.Kind).IsRequired();
+        builder.Property(e => e.UniqueId).IsRequired().HasMaxLength(128);
+        builder.Property(e => e.Kind).IsRequired().HasMaxLength(64);
         builder.Property(e => e.Payload).IsRequired();
         builder.Property(e => e.ReceivedAt).IsRequired();
 

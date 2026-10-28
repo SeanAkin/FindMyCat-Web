@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FindMyCat.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261028192455_AddDeviceEventsAndIngestKey")]
+    [Migration("20261028195926_AddDeviceEventsAndIngestKey")]
     partial class AddDeviceEventsAndIngestKey
     {
         /// <inheritdoc />
@@ -53,6 +53,7 @@ namespace FindMyCat.Data.Migrations
 
                     b.Property<string>("Kind")
                         .IsRequired()
+                        .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Payload")
@@ -64,6 +65,7 @@ namespace FindMyCat.Data.Migrations
 
                     b.Property<string>("UniqueId")
                         .IsRequired()
+                        .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

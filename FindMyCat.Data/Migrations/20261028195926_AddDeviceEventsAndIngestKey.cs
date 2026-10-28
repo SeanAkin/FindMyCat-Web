@@ -23,8 +23,8 @@ namespace FindMyCat.Data.Migrations
                 {
                     Id = table.Column<long>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    UniqueId = table.Column<string>(type: "TEXT", nullable: false),
-                    Kind = table.Column<string>(type: "TEXT", nullable: false),
+                    UniqueId = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
+                    Kind = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
                     Payload = table.Column<string>(type: "TEXT", nullable: false),
                     ReceivedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
                 },

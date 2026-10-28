@@ -50,6 +50,7 @@ namespace FindMyCat.Data.Migrations
 
                     b.Property<string>("Kind")
                         .IsRequired()
+                        .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Payload")
@@ -61,6 +62,7 @@ namespace FindMyCat.Data.Migrations
 
                     b.Property<string>("UniqueId")
                         .IsRequired()
+                        .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
