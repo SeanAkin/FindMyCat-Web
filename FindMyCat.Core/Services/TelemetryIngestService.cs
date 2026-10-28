@@ -2,6 +2,7 @@ using System.Text.Json;
 using FindMyCat.Core.Entities;
 using FindMyCat.Core.Errors;
 using FindMyCat.Core.RepositoryContracts;
+using FindMyCat.Core.Telemetry;
 using Microsoft.Extensions.Logging;
 
 namespace FindMyCat.Core.Services;
@@ -72,7 +73,7 @@ public sealed class TelemetryIngestService(IDeviceEventRepository deviceEventRep
                 throw new TelemetryPayloadException("payload had neither a 'kind' nor a 'command' field");
             
             var value = command.ValueKind == JsonValueKind.String ? command.GetString() : command.GetRawText();
-            return value == LegacyNetworkCommand ? "network" : "command";
+            return value == LegacyNetworkCommand ? DeviceTelemetry.NetworkKind : DeviceTelemetry.CommandKind;
 
         }
     }

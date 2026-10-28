@@ -1,5 +1,8 @@
-﻿using FindMyCat.Core.Integrations.Traccar;
+﻿using System.Text.Json;
+using FindMyCat.Core.Entities;
+using FindMyCat.Core.Integrations.Traccar;
 using FindMyCat.Core.Integrations.Traccar.Socket;
+using FindMyCat.Core.Telemetry;
 
 namespace FindMyCat.Api.Contracts;
 
@@ -54,6 +57,36 @@ public sealed record PositionResponse(
 }
 
 public sealed record HistoryRangeRequest(DateTimeOffset? From, DateTimeOffset? To);
+
+public sealed record DeviceEventsRequest(long? After, string? Kind, int? Limit);
+
+public sealed record DeviceEventResponse(
+    long Id,
+    DateTimeOffset ReceivedAt,
+    string Kind,
+    object? Data,
+    JsonElement Raw)
+{
+    public static DeviceEventResponse FromDomain(DeviceEvent deviceEvent) => new(
+        deviceEvent.Id,
+        deviceEvent.ReceivedAt,
+        deviceEvent.Kind,
+        DeviceTelemetry.Parse(deviceEvent.Kind, deviceEvent.Payload),
+        RawPayload(deviceEvent.Payload));
+
+    private static JsonElement RawPayload(string payload)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(payload);
+            return document.RootElement.Clone();
+        }
+        catch (JsonException)
+        {
+            return JsonSerializer.SerializeToElement(payload);
+        }
+    }
+}
 
 public sealed record DeviceStatusResponse(
     long Id,

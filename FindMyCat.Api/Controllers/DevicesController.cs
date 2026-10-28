@@ -2,14 +2,20 @@
 using FindMyCat.Core.Errors;
 using FindMyCat.Core.Integrations.Hologram;
 using FindMyCat.Core.Integrations.Traccar;
+using FindMyCat.Core.RepositoryContracts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FindMyCat.Api.Controllers;
 
 [ApiController]
 [Route("api/devices")]
-public class DevicesController(ITraccarService traccarService, IHologramService hologramService) : ControllerBase
+public class DevicesController(
+    ITraccarService traccarService,
+    IHologramService hologramService,
+    IDeviceEventRepository deviceEventRepository) : ControllerBase
 {
+    private const int DefaultEventLimit = 20;
+
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<DeviceResponse>>> GetDevices(CancellationToken cancellationToken)
     {
@@ -35,6 +41,34 @@ public class DevicesController(ITraccarService traccarService, IHologramService 
         var history = await traccarService.GetHistoryAsync(
             deviceId, request.From!.Value, request.To!.Value, cancellationToken);
         return Ok(history.Select(PositionResponse.FromDomain).ToList());
+    }
+
+    [HttpGet("{deviceId:long}/state")]
+    public async Task<ActionResult<IReadOnlyList<DeviceEventResponse>>> GetState(long deviceId, CancellationToken cancellationToken)
+    {
+        var uniqueId = await ResolveUniqueIdAsync(deviceId, cancellationToken);
+        var events = await deviceEventRepository.GetLatestPerKindAsync(uniqueId, cancellationToken);
+        return Ok(events.Select(DeviceEventResponse.FromDomain).ToList());
+    }
+
+    [HttpGet("{deviceId:long}/events")]
+    public async Task<ActionResult<IReadOnlyList<DeviceEventResponse>>> GetEvents(
+        long deviceId,
+        [FromQuery] DeviceEventsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var uniqueId = await ResolveUniqueIdAsync(deviceId, cancellationToken);
+        var events = await deviceEventRepository.GetEventsAsync(
+            uniqueId, request.After ?? 0, request.Kind, request.Limit ?? DefaultEventLimit, cancellationToken);
+        return Ok(events.Select(DeviceEventResponse.FromDomain).ToList());
+    }
+
+    private async Task<string> ResolveUniqueIdAsync(long deviceId, CancellationToken cancellationToken)
+    {
+        var devices = await traccarService.GetDevicesAsync(cancellationToken);
+        var device = devices.FirstOrDefault(d => d.Id == deviceId)
+                     ?? throw new DeviceNotFoundException(deviceId);
+        return device.UniqueId;
     }
 
     [HttpPost("{deviceId:long}/ping")]
