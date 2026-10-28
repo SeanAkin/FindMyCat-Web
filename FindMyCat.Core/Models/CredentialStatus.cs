@@ -4,7 +4,7 @@ namespace FindMyCat.Core.Models;
 /// Whether each external credential is configured for a user. Never carries the
 /// secret itself — the vault is write-only from the client's perspective.
 /// </summary>
-public sealed record CredentialStatus(bool TraccarConfigured, bool HologramConfigured)
+public sealed record CredentialStatus(bool TraccarConfigured, bool HologramConfigured, bool IngestConfigured)
 {
-    public static readonly CredentialStatus None = new(false, false);
+    public static readonly CredentialStatus None = new(false, false, false);
 }

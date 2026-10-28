@@ -35,6 +35,66 @@ public sealed class CredentialsControllerTests : IntegrationTestBase
 
         status!.TraccarConfigured.ShouldBeFalse();
         status.HologramConfigured.ShouldBeFalse();
+        status.IngestConfigured.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Standard_user_cannot_rotate_the_ingest_key()
+    {
+        var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
+        using var client = CreateAuthenticatedClient(user);
+
+        var response = await client.PostAsync("/api/credentials/ingest-key", null, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Unauthenticated_user_cannot_rotate_the_ingest_key()
+    {
+        using var client = CreateClient();
+
+        var response = await client.PostAsync("/api/credentials/ingest-key", null, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Admin_rotating_the_ingest_key_reports_configured_and_stores_only_a_hash()
+    {
+        var admin = await CreateUserAsync(UserRole.Administrator, cancellationToken: TestContext.Current.CancellationToken);
+        using var client = CreateAuthenticatedClient(admin);
+
+        var rotateResponse = await client.PostAsync("/api/credentials/ingest-key", null, TestContext.Current.CancellationToken);
+        rotateResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var rotated = await rotateResponse.Content.ReadFromJsonAsync<RotateIngestKeyResponse>(
+            JsonOptions, TestContext.Current.CancellationToken);
+        rotated!.ApiKey.ShouldNotBeNullOrWhiteSpace();
+
+        var status = await client.GetFromJsonAsync<CredentialStatusResponse>(
+            "/api/credentials", TestContext.Current.CancellationToken);
+        status!.IngestConfigured.ShouldBeTrue();
+
+        var stored = await Db.SharedCredentials.AsNoTracking()
+            .SingleAsync(c => c.Id == SharedCredential.SingletonId, TestContext.Current.CancellationToken);
+        stored.IngestApiKeyHash.ShouldNotBeNull();
+        stored.IngestApiKeyHash.ShouldNotContain(rotated.ApiKey);
+    }
+
+    [Fact]
+    public async Task Deleting_the_ingest_key_returns_no_content_then_reports_unconfigured()
+    {
+        var admin = await CreateUserAsync(UserRole.Administrator, cancellationToken: TestContext.Current.CancellationToken);
+        using var client = CreateAuthenticatedClient(admin);
+
+        await client.PostAsync("/api/credentials/ingest-key", null, TestContext.Current.CancellationToken);
+
+        var deleteResponse = await client.DeleteAsync("/api/credentials/ingest-key", TestContext.Current.CancellationToken);
+        deleteResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        var status = await client.GetFromJsonAsync<CredentialStatusResponse>(
+            "/api/credentials", TestContext.Current.CancellationToken);
+        status!.IngestConfigured.ShouldBeFalse();
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using FindMyCat.Api.Auth;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
@@ -30,7 +31,9 @@ public static class AuthServiceCollectionExtensions
                 options.ExpireTimeSpan = TimeSpan.FromDays(14);
                 options.SlidingExpiration = true;
                 options.EventsType = typeof(FindMyCatCookieAuthenticationEvents);
-            });
+            })
+            .AddScheme<AuthenticationSchemeOptions, IngestApiKeyAuthenticationHandler>(
+                IngestApiKeyDefaults.Scheme, _ => { });
 
         if (googleAuthEnabled)
         {

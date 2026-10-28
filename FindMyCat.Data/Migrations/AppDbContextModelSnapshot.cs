@@ -15,7 +15,7 @@ namespace FindMyCat.Data.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.11");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.13");
 
             modelBuilder.Entity("FindMyCat.Core.Entities.AllowedEmail", b =>
                 {
@@ -39,7 +39,37 @@ namespace FindMyCat.Data.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("AllowedEmails", (string)null);
+                    b.ToTable("AllowedEmails");
+                });
+
+            modelBuilder.Entity("FindMyCat.Core.Entities.DeviceEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("ReceivedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UniqueId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UniqueId", "Kind", "Id");
+
+                    b.ToTable("DeviceEvents");
                 });
 
             modelBuilder.Entity("FindMyCat.Core.Entities.SharedCredential", b =>
@@ -54,6 +84,9 @@ namespace FindMyCat.Data.Migrations
                     b.Property<string>("HologramApiKeyProtected")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("IngestApiKeyHash")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("TraccarApiTokenProtected")
                         .HasColumnType("TEXT");
 
@@ -62,7 +95,7 @@ namespace FindMyCat.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("SharedCredentials", (string)null);
+                    b.ToTable("SharedCredentials");
                 });
 
             modelBuilder.Entity("FindMyCat.Core.Entities.User", b =>
@@ -111,7 +144,7 @@ namespace FindMyCat.Data.Migrations
                     b.HasIndex("GoogleSubjectId")
                         .IsUnique();
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 #pragma warning restore 612, 618
         }

@@ -189,4 +189,70 @@ public class CredentialServiceTests
 
         _traccarCredentialChangeNotifier.Verify(n => n.NotifyChanged(), Times.Never);
     }
+
+    [Fact]
+    public async Task RotateIngestKeyAsync_ReturnsPlaintextButStoresOnlyAHash()
+    {
+        _repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SharedCredential?)null);
+
+        SharedCredential? saved = null;
+        _repository.Setup(r => r.UpsertAsync(It.IsAny<SharedCredential>(), It.IsAny<CancellationToken>()))
+            .Callback<SharedCredential, CancellationToken>((c, _) => saved = c)
+            .Returns(Task.CompletedTask);
+
+        var apiKey = await _sut.RotateIngestKeyAsync(TestContext.Current.CancellationToken);
+
+        apiKey.ShouldNotBeNullOrWhiteSpace();
+        saved.ShouldNotBeNull();
+        saved.IngestApiKeyHash.ShouldNotBeNull();
+        saved.IngestApiKeyHash.ShouldNotContain(apiKey);
+    }
+
+    [Fact]
+    public async Task ValidateIngestKeyAsync_AcceptsTheKeyItJustIssued()
+    {
+        SharedCredential? saved = null;
+        _repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => saved);
+        _repository.Setup(r => r.UpsertAsync(It.IsAny<SharedCredential>(), It.IsAny<CancellationToken>()))
+            .Callback<SharedCredential, CancellationToken>((c, _) => saved = c)
+            .Returns(Task.CompletedTask);
+
+        var apiKey = await _sut.RotateIngestKeyAsync(TestContext.Current.CancellationToken);
+
+        (await _sut.ValidateIngestKeyAsync(apiKey, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        (await _sut.ValidateIngestKeyAsync("not-the-key", TestContext.Current.CancellationToken)).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task ValidateIngestKeyAsync_ReturnsFalse_WhenNoKeyConfigured()
+    {
+        _repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SharedCredential());
+
+        (await _sut.ValidateIngestKeyAsync("anything", TestContext.Current.CancellationToken)).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task DeleteIngestKeyAsync_Throws_WhenNothingConfigured()
+    {
+        _repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SharedCredential());
+
+        await Should.ThrowAsync<CredentialNotConfiguredException>(
+            () => _sut.DeleteIngestKeyAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task GetStatusAsync_ReflectsIngestKeyPresence()
+    {
+        _repository.Setup(r => r.GetAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SharedCredential { IngestApiKeyHash = "aGFzaA==" });
+
+        var status = await _sut.GetStatusAsync(TestContext.Current.CancellationToken);
+
+        status.IngestConfigured.ShouldBeTrue();
+        status.TraccarConfigured.ShouldBeFalse();
+    }
 }

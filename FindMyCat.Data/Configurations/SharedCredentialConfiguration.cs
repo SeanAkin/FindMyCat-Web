@@ -12,5 +12,6 @@ public class SharedCredentialConfiguration : IEntityTypeConfiguration<SharedCred
 
         builder.Property(c => c.TraccarApiTokenProtected);
         builder.Property(c => c.HologramApiKeyProtected);
+        builder.Property(c => c.IngestApiKeyHash);
     }
 }

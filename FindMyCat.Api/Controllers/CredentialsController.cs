@@ -52,4 +52,20 @@ public class CredentialsController(ICredentialService credentialService) : Contr
         await credentialService.DeleteHologramKeyAsync(cancellationToken);
         return NoContent();
     }
+
+    [HttpPost("ingest-key")]
+    [Authorize(Roles = nameof(UserRole.Administrator))]
+    public async Task<ActionResult<RotateIngestKeyResponse>> RotateIngestKey(CancellationToken cancellationToken)
+    {
+        var apiKey = await credentialService.RotateIngestKeyAsync(cancellationToken);
+        return Ok(new RotateIngestKeyResponse(apiKey));
+    }
+
+    [HttpDelete("ingest-key")]
+    [Authorize(Roles = nameof(UserRole.Administrator))]
+    public async Task<IActionResult> DeleteIngestKey(CancellationToken cancellationToken)
+    {
+        await credentialService.DeleteIngestKeyAsync(cancellationToken);
+        return NoContent();
+    }
 }

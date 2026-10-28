@@ -27,6 +27,7 @@ public sealed class ErrorCodeValueTests
         nameof(ErrorCodes.AllowedEmailNotFound) => "allowed_email_not_found",
         nameof(ErrorCodes.UserNotFound) => "user_not_found",
         nameof(ErrorCodes.CredentialNotConfigured) => "credential_not_configured",
+        nameof(ErrorCodes.InvalidTelemetryPayload) => "invalid_telemetry_payload",
         nameof(ErrorCodes.DevicePositionNotFound) => "device_position_not_found",
         nameof(ErrorCodes.InvalidRange) => "invalid_range",
         nameof(ErrorCodes.RangeTooLarge) => "range_too_large",
