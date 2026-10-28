@@ -1,5 +1,5 @@
 import { RefreshCw } from 'lucide-react'
-import { type ReactNode, useEffect } from 'react'
+import { type ReactNode, useCallback, useEffect } from 'react'
 import type {
   CommandTelemetry,
   DeviceEventResponse,
@@ -14,6 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getDeviceErrorMessage } from '@/lib/deviceErrors'
 import { useDevicesStore } from '@/stores/devicesStore'
+
+const TELEMETRY_POLL_INTERVAL_MS = 15_000
 
 const NETWORK_MODES: Record<number, string> = {
   0: 'None',
@@ -59,10 +61,18 @@ export function DeviceTelemetryPanel({ deviceId }: DeviceTelemetryPanelProps) {
   const deviceEventsError = useDevicesStore((state) => state.deviceEventsError)
   const fetchDeviceEvents = useDevicesStore((state) => state.fetchDeviceEvents)
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     void fetchDeviceState(deviceId)
     void fetchDeviceEvents(deviceId)
   }, [deviceId, fetchDeviceState, fetchDeviceEvents])
+
+  useEffect(() => {
+    refresh()
+    const intervalId = window.setInterval(() => {
+      if (!document.hidden) refresh()
+    }, TELEMETRY_POLL_INTERVAL_MS)
+    return () => window.clearInterval(intervalId)
+  }, [refresh])
 
   const networkEvent =
     deviceState.find((event) => event.kind === 'network') ?? null
@@ -70,11 +80,6 @@ export function DeviceTelemetryPanel({ deviceId }: DeviceTelemetryPanelProps) {
     deviceState.find((event) => event.kind === 'command') ?? null
   const network = networkOf(networkEvent)
   const command = commandOf(commandEvent)
-
-  const refresh = () => {
-    void fetchDeviceState(deviceId)
-    void fetchDeviceEvents(deviceId)
-  }
 
   return (
     <Card>

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import type { DeviceEventResponse } from '@/api/types'
 import { DeviceTelemetryPanel } from '@/components/devices/DeviceTelemetryPanel'
 import { useDevicesStore } from '@/stores/devicesStore'
@@ -50,6 +50,27 @@ describe('DeviceTelemetryPanel', () => {
 
     expect(fetchDeviceState).toHaveBeenCalledWith(5)
     expect(fetchDeviceEvents).toHaveBeenCalledWith(5)
+  })
+
+  it('polls the telemetry every 15 seconds while mounted', () => {
+    vi.useFakeTimers()
+    try {
+      const fetchDeviceState = vi.fn()
+      const fetchDeviceEvents = vi.fn()
+      useDevicesStore.setState({ fetchDeviceState, fetchDeviceEvents })
+
+      render(<DeviceTelemetryPanel deviceId={5} />)
+      expect(fetchDeviceState).toHaveBeenCalledTimes(1)
+
+      act(() => {
+        vi.advanceTimersByTime(30_000)
+      })
+
+      expect(fetchDeviceState).toHaveBeenCalledTimes(3)
+      expect(fetchDeviceEvents).toHaveBeenCalledTimes(3)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('renders the network and command summaries from state', () => {

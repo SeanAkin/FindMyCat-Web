@@ -257,14 +257,17 @@ export const useDevicesStore = create<DevicesState>((set, get) => ({
   deviceStateStatus: 'idle',
   deviceStateError: null,
   fetchDeviceState: async (deviceId) => {
-    set({ deviceStateStatus: 'loading', deviceStateError: null })
+    const isSilentRefresh = get().deviceStateStatus === 'success'
+    if (!isSilentRefresh) {
+      set({ deviceStateStatus: 'loading', deviceStateError: null })
+    }
     const isStaleRequest = () => get().selectedDeviceId !== deviceId
     try {
       const deviceState = await getDeviceState(deviceId)
       if (isStaleRequest()) return
-      set({ deviceState, deviceStateStatus: 'success' })
+      set({ deviceState, deviceStateStatus: 'success', deviceStateError: null })
     } catch (error) {
-      if (isStaleRequest()) return
+      if (isStaleRequest() || isSilentRefresh) return
       set({ deviceStateStatus: 'error', deviceStateError: toApiError(error) })
     }
   },
@@ -273,14 +276,21 @@ export const useDevicesStore = create<DevicesState>((set, get) => ({
   deviceEventsStatus: 'idle',
   deviceEventsError: null,
   fetchDeviceEvents: async (deviceId) => {
-    set({ deviceEventsStatus: 'loading', deviceEventsError: null })
+    const isSilentRefresh = get().deviceEventsStatus === 'success'
+    if (!isSilentRefresh) {
+      set({ deviceEventsStatus: 'loading', deviceEventsError: null })
+    }
     const isStaleRequest = () => get().selectedDeviceId !== deviceId
     try {
       const deviceEvents = await getDeviceEvents(deviceId)
       if (isStaleRequest()) return
-      set({ deviceEvents, deviceEventsStatus: 'success' })
+      set({
+        deviceEvents,
+        deviceEventsStatus: 'success',
+        deviceEventsError: null,
+      })
     } catch (error) {
-      if (isStaleRequest()) return
+      if (isStaleRequest() || isSilentRefresh) return
       set({ deviceEventsStatus: 'error', deviceEventsError: toApiError(error) })
     }
   },
