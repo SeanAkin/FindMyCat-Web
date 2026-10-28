@@ -61,12 +61,18 @@ export const useAdminStore = create<AdminState>((set) => ({
   credentialsStatus: 'idle',
   credentialsError: null,
   fetchCredentialStatus: async () => {
-    set({ credentialsStatus: 'loading', credentialsError: null })
+    set((state) => ({
+      credentialsStatus: state.credentials ? 'success' : 'loading',
+      credentialsError: null,
+    }))
     try {
       const credentials = await getCredentialStatus()
       set({ credentials, credentialsStatus: 'success' })
     } catch (error) {
-      set({ credentialsStatus: 'error', credentialsError: toApiError(error) })
+      set((state) => ({
+        credentialsStatus: state.credentials ? 'success' : 'error',
+        credentialsError: toApiError(error),
+      }))
     }
   },
 }))

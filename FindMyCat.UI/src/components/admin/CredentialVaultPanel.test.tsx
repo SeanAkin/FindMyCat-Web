@@ -7,6 +7,7 @@ import {
   deleteHologramKey,
   deleteIngestKey,
   deleteTraccarToken,
+  getCredentialStatus,
   rotateIngestKey,
   setTraccarToken,
 } from '@/api/credentials'
@@ -26,6 +27,9 @@ vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }))
 
+const realFetchCredentialStatus =
+  useAdminStore.getState().fetchCredentialStatus
+
 describe('CredentialVaultPanel', () => {
   afterEach(() => {
     vi.clearAllMocks()
@@ -33,6 +37,7 @@ describe('CredentialVaultPanel', () => {
       credentials: null,
       credentialsStatus: 'idle',
       credentialsError: null,
+      fetchCredentialStatus: realFetchCredentialStatus,
     })
   })
 
@@ -197,6 +202,9 @@ describe('CredentialVaultPanel', () => {
     await waitFor(() => expect(rotateIngestKey).toHaveBeenCalled())
     expect(fetchCredentialStatus).toHaveBeenCalled()
     expect(screen.getByDisplayValue('b'.repeat(64))).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument(),
+    )
   })
 
   it('disables a configured ingest key only after confirming', async () => {
@@ -223,5 +231,32 @@ describe('CredentialVaultPanel', () => {
     await waitFor(() => expect(deleteIngestKey).toHaveBeenCalled())
     expect(fetchCredentialStatus).toHaveBeenCalled()
     expect(toast.success).toHaveBeenCalledWith('Ingest API key disabled.')
+  })
+
+  it('keeps the revealed key visible while the status refresh runs', async () => {
+    vi.mocked(rotateIngestKey).mockResolvedValue({ apiKey: 'c'.repeat(64) })
+    vi.mocked(getCredentialStatus).mockResolvedValue({
+      traccarConfigured: false,
+      hologramConfigured: false,
+      ingestConfigured: true,
+    })
+    useAdminStore.setState({
+      credentialsStatus: 'success',
+      credentials: {
+        traccarConfigured: false,
+        hologramConfigured: false,
+        ingestConfigured: false,
+      },
+    })
+    const user = userEvent.setup()
+    render(<CredentialVaultPanel />)
+
+    await user.click(screen.getByRole('button', { name: 'Generate key' }))
+
+    await waitFor(() => expect(getCredentialStatus).toHaveBeenCalled())
+    await waitFor(() =>
+      expect(useAdminStore.getState().credentials?.ingestConfigured).toBe(true),
+    )
+    expect(screen.getByDisplayValue('c'.repeat(64))).toBeInTheDocument()
   })
 })
