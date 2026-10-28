@@ -90,6 +90,7 @@ export type ApiErrorCode =
   | 'user_not_found'
   | 'credential_not_configured'
   | 'invalid_telemetry_payload'
+  | 'device_not_found'
   | 'device_position_not_found'
   | 'invalid_range'
   | 'range_too_large'

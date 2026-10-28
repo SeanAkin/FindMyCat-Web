@@ -14,6 +14,10 @@ public sealed class TraccarUnavailableException(string? logDetail = null, Except
     : FindMyCatException(HttpStatusCode.BadGateway, ErrorCodes.TraccarUnavailable,
         "Traccar is currently unavailable. Please try again.", logDetail, innerException);
 
+public sealed class DeviceNotFoundException(long deviceId)
+    : FindMyCatException(HttpStatusCode.NotFound, ErrorCodes.DeviceNotFound,
+        "That collar could not be found.", logDetail: $"deviceId={deviceId}");
+
 public sealed class DevicePositionNotFoundException(long deviceId)
     : FindMyCatException(HttpStatusCode.NotFound, ErrorCodes.DevicePositionNotFound,
         "No position has been reported for this collar yet.", logDetail: $"deviceId={deviceId}");
