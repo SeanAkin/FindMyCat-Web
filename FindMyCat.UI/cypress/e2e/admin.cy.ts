@@ -32,7 +32,11 @@ function visitAdminPage() {
   }).as('users')
   cy.intercept('GET', '/api/credentials', {
     statusCode: 200,
-    body: { traccarConfigured: false, hologramConfigured: false },
+    body: {
+      traccarConfigured: false,
+      hologramConfigured: false,
+      ingestConfigured: false,
+    },
   }).as('credentials')
 
   cy.visit('/admin')
@@ -73,7 +77,11 @@ describe('admin area', () => {
     }).as('setTraccar')
     cy.intercept('GET', '/api/credentials', {
       statusCode: 200,
-      body: { traccarConfigured: true, hologramConfigured: false },
+      body: {
+        traccarConfigured: true,
+        hologramConfigured: false,
+        ingestConfigured: false,
+      },
     }).as('refreshedCredentials')
 
     cy.get('input[placeholder="Traccar API token"]').type('fake-token')
@@ -102,7 +110,11 @@ describe('admin area', () => {
     )
     cy.intercept('GET', '/api/credentials', {
       statusCode: 200,
-      body: { traccarConfigured: false, hologramConfigured: false },
+      body: {
+        traccarConfigured: false,
+        hologramConfigured: false,
+        ingestConfigured: false,
+      },
     }).as('credentials')
 
     cy.visit('/')

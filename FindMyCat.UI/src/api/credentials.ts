@@ -1,5 +1,5 @@
 import { api } from '@/api/http'
-import type { CredentialStatusResponse } from '@/api/types'
+import type { CredentialStatusResponse, IngestKeyResponse } from '@/api/types'
 
 export const getCredentialStatus = (signal?: AbortSignal) =>
   api.get<CredentialStatusResponse>('/api/credentials', signal)
@@ -15,3 +15,9 @@ export const deleteTraccarToken = (signal?: AbortSignal) =>
 
 export const deleteHologramKey = (signal?: AbortSignal) =>
   api.delete<void>('/api/credentials/hologram', signal)
+
+export const rotateIngestKey = (signal?: AbortSignal) =>
+  api.post<IngestKeyResponse>('/api/credentials/ingest-key', undefined, signal)
+
+export const deleteIngestKey = (signal?: AbortSignal) =>
+  api.delete<void>('/api/credentials/ingest-key', signal)
