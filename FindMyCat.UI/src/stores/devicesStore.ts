@@ -1,5 +1,10 @@
 import { create } from 'zustand'
-import { getDeviceHistory, listDevices } from '@/api/devices'
+import {
+  getDeviceEvents,
+  getDeviceHistory,
+  getDeviceState,
+  listDevices,
+} from '@/api/devices'
 import {
   createDevicesHubConnection,
   reconnectDelayMs,
@@ -7,6 +12,7 @@ import {
 } from '@/api/devicesHub'
 import { ApiError, toApiError } from '@/api/http'
 import type {
+  DeviceEventResponse,
   DeviceResponse,
   DeviceStatusResponse,
   PositionResponse,
@@ -43,6 +49,16 @@ export interface DevicesState {
   historyStatus: LoadStatus
   historyError: ApiError | null
   fetchHistory: (deviceId: number, from: Date, to: Date) => Promise<void>
+
+  deviceState: DeviceEventResponse[]
+  deviceStateStatus: LoadStatus
+  deviceStateError: ApiError | null
+  fetchDeviceState: (deviceId: number) => Promise<void>
+
+  deviceEvents: DeviceEventResponse[]
+  deviceEventsStatus: LoadStatus
+  deviceEventsError: ApiError | null
+  fetchDeviceEvents: (deviceId: number) => Promise<void>
 
   lastSentDeviceCommand: Record<number, 'lost' | 'active'>
   setLastSentDeviceCommand: (
@@ -213,6 +229,12 @@ export const useDevicesStore = create<DevicesState>((set, get) => ({
       history: [],
       historyStatus: 'idle',
       historyError: null,
+      deviceState: [],
+      deviceStateStatus: 'idle',
+      deviceStateError: null,
+      deviceEvents: [],
+      deviceEventsStatus: 'idle',
+      deviceEventsError: null,
     }),
 
   history: [],
@@ -228,6 +250,38 @@ export const useDevicesStore = create<DevicesState>((set, get) => ({
     } catch (error) {
       if (isStaleRequest()) return
       set({ historyStatus: 'error', historyError: toApiError(error) })
+    }
+  },
+
+  deviceState: [],
+  deviceStateStatus: 'idle',
+  deviceStateError: null,
+  fetchDeviceState: async (deviceId) => {
+    set({ deviceStateStatus: 'loading', deviceStateError: null })
+    const isStaleRequest = () => get().selectedDeviceId !== deviceId
+    try {
+      const deviceState = await getDeviceState(deviceId)
+      if (isStaleRequest()) return
+      set({ deviceState, deviceStateStatus: 'success' })
+    } catch (error) {
+      if (isStaleRequest()) return
+      set({ deviceStateStatus: 'error', deviceStateError: toApiError(error) })
+    }
+  },
+
+  deviceEvents: [],
+  deviceEventsStatus: 'idle',
+  deviceEventsError: null,
+  fetchDeviceEvents: async (deviceId) => {
+    set({ deviceEventsStatus: 'loading', deviceEventsError: null })
+    const isStaleRequest = () => get().selectedDeviceId !== deviceId
+    try {
+      const deviceEvents = await getDeviceEvents(deviceId)
+      if (isStaleRequest()) return
+      set({ deviceEvents, deviceEventsStatus: 'success' })
+    } catch (error) {
+      if (isStaleRequest()) return
+      set({ deviceEventsStatus: 'error', deviceEventsError: toApiError(error) })
     }
   },
 

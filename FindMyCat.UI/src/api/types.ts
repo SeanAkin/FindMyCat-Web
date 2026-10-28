@@ -27,6 +27,31 @@ export interface PositionResponse {
   satellites: number | null
 }
 
+export interface NetworkTelemetry {
+  status: string | null
+  mode: number | null
+  edrxSeconds: number | null
+}
+
+export interface CommandTelemetry {
+  command: string | null
+  status: string | null
+  reason: string | null
+  method: string | null
+  satellites: number | null
+  elapsedSeconds: number | null
+  battery: number | null
+  uptimeSeconds: number | null
+}
+
+export interface DeviceEventResponse {
+  id: number
+  receivedAt: string
+  kind: string
+  data: NetworkTelemetry | CommandTelemetry | null
+  raw: unknown
+}
+
 export type DeviceStatus = 'online' | 'offline' | 'unknown'
 
 export interface DeviceResponse {

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { DeviceCommands } from '@/components/devices/DeviceCommands'
 import { DeviceHistoryPanel } from '@/components/devices/DeviceHistoryPanel'
 import { DeviceStatusBadge } from '@/components/devices/DeviceStatusBadge'
+import { DeviceTelemetryPanel } from '@/components/devices/DeviceTelemetryPanel'
 import { TimeAgo } from '@/components/TimeAgo'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -98,6 +99,8 @@ export function DeviceDetailPanel() {
           )}
         </CardContent>
       </Card>
+
+      <DeviceTelemetryPanel deviceId={device.id} />
 
       <DeviceHistoryPanel deviceId={device.id} />
     </div>

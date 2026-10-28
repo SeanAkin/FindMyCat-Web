@@ -1,5 +1,9 @@
 import { api } from '@/api/http'
-import type { DeviceResponse, PositionResponse } from '@/api/types'
+import type {
+  DeviceEventResponse,
+  DeviceResponse,
+  PositionResponse,
+} from '@/api/types'
 
 export const listDevices = (signal?: AbortSignal) =>
   api.get<DeviceResponse[]>('/api/devices', signal)
@@ -16,6 +20,25 @@ export const getDeviceHistory = (
   })
   return api.get<PositionResponse[]>(
     `/api/devices/${deviceId}/history?${query.toString()}`,
+    signal,
+  )
+}
+
+export const getDeviceState = (deviceId: number, signal?: AbortSignal) =>
+  api.get<DeviceEventResponse[]>(`/api/devices/${deviceId}/state`, signal)
+
+export const getDeviceEvents = (
+  deviceId: number,
+  options: { after?: number; kind?: string; limit?: number } = {},
+  signal?: AbortSignal,
+) => {
+  const query = new URLSearchParams()
+  if (options.after !== undefined) query.set('after', String(options.after))
+  if (options.kind) query.set('kind', options.kind)
+  if (options.limit !== undefined) query.set('limit', String(options.limit))
+  const suffix = query.toString()
+  return api.get<DeviceEventResponse[]>(
+    `/api/devices/${deviceId}/events${suffix ? `?${suffix}` : ''}`,
     signal,
   )
 }
