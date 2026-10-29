@@ -13,4 +13,5 @@ public sealed record TraccarPosition(
     double Accuracy,
     bool Valid,
     double? BatteryLevel,
-    double? Satellites);
+    double? Satellites,
+    long Id = 0);

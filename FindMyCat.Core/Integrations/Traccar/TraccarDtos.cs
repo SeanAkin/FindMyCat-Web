@@ -43,7 +43,8 @@ internal sealed record TraccarPositionDto(
     double Course,
     double Accuracy,
     bool Valid,
-    TraccarPositionAttributesDto? Attributes)
+    TraccarPositionAttributesDto? Attributes,
+    long Id = 0)
 {
     public TraccarPosition ToDomain() => new(
         DeviceId,
@@ -58,7 +59,8 @@ internal sealed record TraccarPositionDto(
         Accuracy,
         Valid,
         Attributes?.BatteryLevel,
-        Attributes?.Sat);
+        Attributes?.Sat,
+        Id);
 }
 
 internal sealed record TraccarPositionAttributesDto(

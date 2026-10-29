@@ -112,7 +112,7 @@ public sealed class DevicesHubTests : IntegrationTestBase
         var position = (await listener.Positions.Reader.ReadAsync(Timeout())).ShouldHaveSingleItem();
         position.DeviceId.ShouldBe(7);
         position.Latitude.ShouldBe(12.34);
-        position.BatteryLevel.ShouldBe(55);
+        position.Attributes.BatteryLevel.ShouldBe(55);
     }
 
     [Fact]

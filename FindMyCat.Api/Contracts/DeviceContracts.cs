@@ -33,6 +33,7 @@ public sealed record DeviceAttributes(string? Emoji);
 public sealed record SaveDeviceRequest(string Name, string UniqueId, DeviceAttributes? Attributes);
 
 public sealed record PositionResponse(
+    long Id,
     long DeviceId,
     DateTimeOffset FixTime,
     DateTimeOffset DeviceTime,
@@ -40,14 +41,14 @@ public sealed record PositionResponse(
     double Latitude,
     double Longitude,
     double Altitude,
-    double SpeedKnots,
+    double Speed,
     double Course,
     double Accuracy,
     bool Valid,
-    double? BatteryLevel,
-    double? Satellites)
+    PositionAttributes Attributes)
 {
     public static PositionResponse FromDomain(TraccarPosition position) => new(
+        position.Id,
         position.DeviceId,
         position.FixTime,
         position.DeviceTime,
@@ -59,9 +60,10 @@ public sealed record PositionResponse(
         position.Course,
         position.Accuracy,
         position.Valid,
-        position.BatteryLevel,
-        position.Satellites);
+        new PositionAttributes(position.BatteryLevel, position.Satellites));
 }
+
+public sealed record PositionAttributes(double? BatteryLevel, double? Sat);
 
 public sealed record HistoryRangeRequest(DateTimeOffset? From, DateTimeOffset? To);
 

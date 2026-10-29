@@ -60,7 +60,7 @@ public sealed class DevicesControllerTests : IntegrationTestBase
         withPosition.Name.ShouldBe("Test Device One");
         withPosition.Position.ShouldNotBeNull();
         withPosition.Position.Latitude.ShouldBe(12.34);
-        withPosition.Position.BatteryLevel.ShouldBe(55);
+        withPosition.Position.Attributes.BatteryLevel.ShouldBe(55);
         devices.Single(d => d.Id == 2).Position.ShouldBeNull();
     }
 
@@ -120,7 +120,7 @@ public sealed class DevicesControllerTests : IntegrationTestBase
 
         position!.DeviceId.ShouldBe(1);
         position.Latitude.ShouldBe(12.34);
-        position.BatteryLevel.ShouldBe(55);
+        position.Attributes.BatteryLevel.ShouldBe(55);
     }
 
     [Theory]

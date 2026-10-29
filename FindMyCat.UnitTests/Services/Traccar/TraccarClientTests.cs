@@ -50,6 +50,7 @@ public class TraccarClientTests
         withPosition.LatestPosition.Latitude.ShouldBe(12.34);
         withPosition.LatestPosition.BatteryLevel.ShouldBe(55.0);
         withPosition.LatestPosition.Satellites.ShouldBe(7.0);
+        withPosition.LatestPosition.Id.ShouldBe(100);
 
         var withoutPosition = devices.Single(d => d.Id == 2);
         withoutPosition.Disabled.ShouldBeTrue();
