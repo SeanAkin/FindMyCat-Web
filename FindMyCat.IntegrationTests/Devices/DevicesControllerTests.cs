@@ -248,6 +248,38 @@ public sealed class DevicesControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Hyphenated_command_is_sent_as_is()
+    {
+        var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
+        using var client = CreateAuthenticatedClient(user);
+        await ConfigureTraccarTokenAsync();
+        await ConfigureHologramKeyAsync();
+        Traccar.Devices = [new TraccarDevice(1, "Test Collar", "unique-1", "online", null, false, null)];
+        Hologram.DeviceIdsByImei["unique-1"] = 555;
+
+        var response = await client.PostAsync("/api/devices/1/ping-gps", null, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        Hologram.SentMessages.ShouldContain((555, "ping-gps"));
+    }
+
+    [Fact]
+    public async Task Unknown_command_returns_404_and_sends_nothing()
+    {
+        var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
+        using var client = CreateAuthenticatedClient(user);
+        await ConfigureTraccarTokenAsync();
+        await ConfigureHologramKeyAsync();
+        Traccar.Devices = [new TraccarDevice(1, "Test Collar", "unique-1", "online", null, false, null)];
+        Hologram.DeviceIdsByImei["unique-1"] = 555;
+
+        var response = await client.PostAsync("/api/devices/1/self-destruct", null, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        Hologram.SentMessages.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task Lost_returns_404_when_device_not_registered_in_hologram()
     {
         var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);

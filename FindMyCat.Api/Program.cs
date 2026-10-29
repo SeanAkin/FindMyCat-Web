@@ -23,7 +23,7 @@ if (app.Environment.IsDevelopment())
 if (!app.Environment.IsEnvironment("Testing"))
 {
     app.MigrateDatabase();
-    await app.SeedTraccarTokenAsync();
+    await app.SeedCredentialsAsync();
 }
 
 app.UseForwardedHeaders();

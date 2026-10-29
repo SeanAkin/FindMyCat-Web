@@ -101,24 +101,15 @@ public class DevicesController(
         return device.UniqueId;
     }
 
-    [HttpPost("{deviceId:long}/ping")]
-    public async Task<IActionResult> Ping(long deviceId, CancellationToken cancellationToken)
+    [HttpPost("{deviceId:long}/{command}")]
+    public async Task<IActionResult> SendCommand(long deviceId, string command, CancellationToken cancellationToken)
     {
-        await hologramService.SendCommandAsync(deviceId, HologramCommand.Ping, cancellationToken);
-        return NoContent();
-    }
+        if (!HologramCommandExtensions.TryParse(command, out var hologramCommand))
+        {
+            return NotFound();
+        }
 
-    [HttpPost("{deviceId:long}/lost")]
-    public async Task<IActionResult> MarkLost(long deviceId, CancellationToken cancellationToken)
-    {
-        await hologramService.SendCommandAsync(deviceId, HologramCommand.Lost, cancellationToken);
-        return NoContent();
-    }
-
-    [HttpPost("{deviceId:long}/active")]
-    public async Task<IActionResult> MarkActive(long deviceId, CancellationToken cancellationToken)
-    {
-        await hologramService.SendCommandAsync(deviceId, HologramCommand.Active, cancellationToken);
+        await hologramService.SendCommandAsync(deviceId, hologramCommand, cancellationToken);
         return NoContent();
     }
 }

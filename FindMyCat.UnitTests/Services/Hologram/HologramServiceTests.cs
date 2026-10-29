@@ -62,8 +62,13 @@ public class HologramServiceTests
 
     [Theory]
     [InlineData(HologramCommand.Ping, "ping")]
+    [InlineData(HologramCommand.PingWifi, "ping-wifi")]
+    [InlineData(HologramCommand.PingGps, "ping-gps")]
+    [InlineData(HologramCommand.SpoofPing, "spoof-ping")]
     [InlineData(HologramCommand.Lost, "lost")]
     [InlineData(HologramCommand.Active, "active")]
+    [InlineData(HologramCommand.Idle, "idle")]
+    [InlineData(HologramCommand.Update, "update")]
     public async Task SendCommand_resolves_device_and_sends_wire_command(HologramCommand command, string wireValue)
     {
         HasApiKey("key");

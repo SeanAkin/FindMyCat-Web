@@ -64,21 +64,25 @@ public static class WebApplicationExtensions
         return app;
     }
 
-    // Lets a deployment hand over the first Traccar token instead of someone pasting it into the admin page.
-    // Only fills an empty slot, so a token set from the admin page later is never overwritten.
-    public static async Task SeedTraccarTokenAsync(this WebApplication app)
+    // Lets a deployment hand over the first Traccar token and Hologram key instead of someone pasting them
+    // into the admin page. Only fills empty slots, so values set from the admin page later are never overwritten.
+    public static async Task SeedCredentialsAsync(this WebApplication app)
     {
-        var token = app.Configuration["Traccar:ApiToken"];
-        if (string.IsNullOrWhiteSpace(token))
-        {
-            return;
-        }
-
         using var scope = app.Services.CreateScope();
         var credentialService = scope.ServiceProvider.GetRequiredService<ICredentialService>();
-        if (string.IsNullOrEmpty(await credentialService.GetTraccarTokenAsync()))
+
+        var traccarToken = app.Configuration["Traccar:ApiToken"];
+        if (!string.IsNullOrWhiteSpace(traccarToken)
+            && string.IsNullOrEmpty(await credentialService.GetTraccarTokenAsync()))
         {
-            await credentialService.SetTraccarTokenAsync(token);
+            await credentialService.SetTraccarTokenAsync(traccarToken);
+        }
+
+        var hologramKey = app.Configuration["Hologram:ApiKey"];
+        if (!string.IsNullOrWhiteSpace(hologramKey)
+            && string.IsNullOrEmpty(await credentialService.GetHologramKeyAsync()))
+        {
+            await credentialService.SetHologramKeyAsync(hologramKey);
         }
     }
 }

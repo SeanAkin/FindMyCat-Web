@@ -151,6 +151,7 @@ Using a platform that manages volumes for you, like Dokploy, Coolify, or a Kuber
 | `FINDMYCAT_ENCRYPTION_KEY` | Yes | None | Base64-encoded 32-byte key used to encrypt stored Traccar/Hologram credentials. Generate one with `openssl rand -base64 32`. |
 | `Traccar__BaseUrl` | Yes | None | Base URL of your Traccar server, e.g. `https://traccar.example.com`. |
 | `Traccar__ApiToken` | No | None | Traccar API token to store on startup when none is saved yet. A token set later on the admin page takes precedence and is never overwritten. |
+| `Hologram__ApiKey` | No | None | Hologram API key to store on startup when none is saved yet, for sending commands to collars. Same precedence as `Traccar__ApiToken`. |
 | `Traccar__LiveUpdates__Enabled` | No | `true` | Set to `false` to turn off live updates from Traccar. The app keeps working by polling. |
 | `ConnectionStrings__Default` | No | `Data Source=findmycat.db` | SQLite connection string. Point this at a mounted volume in production. |
 | `Authentication__Google__Enabled` | No | `true` | Set to `false` to disable Google sign-in entirely. This removes the button on the frontend and the provider on the backend. |
