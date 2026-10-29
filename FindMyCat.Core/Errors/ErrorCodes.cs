@@ -19,6 +19,7 @@ public static class ErrorCodes
 
     public const string DeviceNotFound = "device_not_found";
     public const string DevicePositionNotFound = "device_position_not_found";
+    public const string DeviceRejected = "device_rejected";
     public const string InvalidRange = "invalid_range";
     public const string RangeTooLarge = "range_too_large";
 

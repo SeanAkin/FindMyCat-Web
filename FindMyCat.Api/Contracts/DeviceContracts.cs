@@ -13,6 +13,7 @@ public sealed record DeviceResponse(
     string Status,
     DateTimeOffset? LastUpdate,
     bool Disabled,
+    string? Emoji,
     PositionResponse? Position)
 {
     public static DeviceResponse FromDomain(TraccarDevice device) => new(
@@ -22,8 +23,11 @@ public sealed record DeviceResponse(
         device.Status,
         device.LastUpdate,
         device.Disabled,
+        device.Emoji,
         device.LatestPosition is null ? null : PositionResponse.FromDomain(device.LatestPosition));
 }
+
+public sealed record SaveDeviceRequest(string Name, string UniqueId, string Emoji);
 
 public sealed record PositionResponse(
     long DeviceId,

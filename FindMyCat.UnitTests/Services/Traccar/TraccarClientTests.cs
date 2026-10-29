@@ -139,4 +139,46 @@ public class TraccarClientTests
 
         await Should.ThrowAsync<TraccarUnavailableException>(() => client.GetDevicesWithPositionsAsync("tok"));
     }
+
+    [Fact]
+    public async Task UpdateDevice_keeps_fields_and_attributes_it_does_not_manage()
+    {
+        const string existing = """
+            {"id":1,"name":"Old","uniqueId":"collar-1","groupId":4,"attributes":{"emoji":"🐕","speedLimit":12}}
+            """;
+        string? sentBody = null;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            if (request.Method == HttpMethod.Put)
+            {
+                sentBody = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(sentBody ?? existing, System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+        var client = CreateClient(handler);
+
+        var device = await client.UpdateDeviceAsync(
+            "tok", 1, "Mochi", "collar-1", "🐈", TestContext.Current.CancellationToken);
+
+        device.Name.ShouldBe("Mochi");
+        device.Emoji.ShouldBe("🐈");
+        var sent = System.Text.Json.Nodes.JsonNode.Parse(sentBody!)!;
+        sent["groupId"]!.GetValue<int>().ShouldBe(4);
+        sent["attributes"]!["speedLimit"]!.GetValue<int>().ShouldBe(12);
+        sent["attributes"]!["emoji"]!.GetValue<string>().ShouldBe("🐈");
+    }
+
+    [Fact]
+    public async Task Bad_request_throws_device_rejected()
+    {
+        var handler = StubHttpMessageHandler.ReturningJson(_ => (HttpStatusCode.BadRequest, "Duplicate entry"));
+        var client = CreateClient(handler);
+
+        await Should.ThrowAsync<TraccarDeviceRejectedException>(
+            () => client.CreateDeviceAsync("tok", "Mochi", "collar-1", "🐈"));
+    }
 }

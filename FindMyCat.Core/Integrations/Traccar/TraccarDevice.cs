@@ -7,4 +7,5 @@ public sealed record TraccarDevice(
     string Status,
     DateTimeOffset? LastUpdate,
     bool Disabled,
-    TraccarPosition? LatestPosition);
+    TraccarPosition? LatestPosition,
+    string? Emoji = null);

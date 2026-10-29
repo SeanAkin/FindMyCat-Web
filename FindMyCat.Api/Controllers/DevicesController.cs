@@ -1,8 +1,10 @@
 ﻿using FindMyCat.Api.Contracts;
+using FindMyCat.Core.Entities;
 using FindMyCat.Core.Errors;
 using FindMyCat.Core.Integrations.Hologram;
 using FindMyCat.Core.Integrations.Traccar;
 using FindMyCat.Core.RepositoryContracts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FindMyCat.Api.Controllers;
@@ -21,6 +23,34 @@ public class DevicesController(
     {
         var devices = await traccarService.GetDevicesAsync(cancellationToken);
         return Ok(devices.Select(DeviceResponse.FromDomain).ToList());
+    }
+
+    [HttpPost]
+    [Authorize(Roles = nameof(UserRole.Administrator))]
+    public async Task<ActionResult<DeviceResponse>> CreateDevice(
+        [FromBody] SaveDeviceRequest request, CancellationToken cancellationToken)
+    {
+        var device = await traccarService.CreateDeviceAsync(
+            request.Name, request.UniqueId, request.Emoji, cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, DeviceResponse.FromDomain(device));
+    }
+
+    [HttpPut("{deviceId:long}")]
+    [Authorize(Roles = nameof(UserRole.Administrator))]
+    public async Task<ActionResult<DeviceResponse>> UpdateDevice(
+        long deviceId, [FromBody] SaveDeviceRequest request, CancellationToken cancellationToken)
+    {
+        var device = await traccarService.UpdateDeviceAsync(
+            deviceId, request.Name, request.UniqueId, request.Emoji, cancellationToken);
+        return Ok(DeviceResponse.FromDomain(device));
+    }
+
+    [HttpDelete("{deviceId:long}")]
+    [Authorize(Roles = nameof(UserRole.Administrator))]
+    public async Task<IActionResult> DeleteDevice(long deviceId, CancellationToken cancellationToken)
+    {
+        await traccarService.DeleteDeviceAsync(deviceId, cancellationToken);
+        return NoContent();
     }
 
     [HttpGet("{deviceId:long}/position")]

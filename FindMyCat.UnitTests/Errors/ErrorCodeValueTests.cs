@@ -30,6 +30,7 @@ public sealed class ErrorCodeValueTests
         nameof(ErrorCodes.InvalidTelemetryPayload) => "invalid_telemetry_payload",
         nameof(ErrorCodes.DeviceNotFound) => "device_not_found",
         nameof(ErrorCodes.DevicePositionNotFound) => "device_position_not_found",
+        nameof(ErrorCodes.DeviceRejected) => "device_rejected",
         nameof(ErrorCodes.InvalidRange) => "invalid_range",
         nameof(ErrorCodes.RangeTooLarge) => "range_too_large",
         nameof(ErrorCodes.TraccarNotConfigured) => "traccar_not_configured",

@@ -12,6 +12,16 @@ public sealed class HistoryRangeRequestValidator : AbstractValidator<HistoryRang
     }
 }
 
+public sealed class SaveDeviceRequestValidator : AbstractValidator<SaveDeviceRequest>
+{
+    public SaveDeviceRequestValidator()
+    {
+        RuleFor(request => request.Name).NotEmpty();
+        RuleFor(request => request.UniqueId).NotEmpty();
+        RuleFor(request => request.Emoji).NotEmpty();
+    }
+}
+
 public sealed class DeviceEventsRequestValidator : AbstractValidator<DeviceEventsRequest>
 {
     public DeviceEventsRequestValidator()

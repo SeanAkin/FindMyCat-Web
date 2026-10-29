@@ -22,6 +22,10 @@ public sealed class DevicePositionNotFoundException(long deviceId)
     : FindMyCatException(HttpStatusCode.NotFound, ErrorCodes.DevicePositionNotFound,
         "No position has been reported for this collar yet.", logDetail: $"deviceId={deviceId}");
 
+public sealed class TraccarDeviceRejectedException(string? logDetail = null)
+    : FindMyCatException(HttpStatusCode.BadRequest, ErrorCodes.DeviceRejected,
+        "Traccar rejected that collar. Its unique id may already be in use.", logDetail);
+
 public sealed class InvalidHistoryRangeException()
     : FindMyCatException(HttpStatusCode.BadRequest, ErrorCodes.InvalidRange,
         "'from' must be earlier than 'to'.");

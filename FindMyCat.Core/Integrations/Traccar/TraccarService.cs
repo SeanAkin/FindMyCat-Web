@@ -10,6 +10,12 @@ public interface ITraccarService
     Task<TraccarPosition?> GetLatestPositionAsync(long deviceId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<TraccarPosition>> GetHistoryAsync(long deviceId, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default);
+
+    Task<TraccarDevice> CreateDeviceAsync(string name, string uniqueId, string emoji, CancellationToken cancellationToken = default);
+
+    Task<TraccarDevice> UpdateDeviceAsync(long deviceId, string name, string uniqueId, string emoji, CancellationToken cancellationToken = default);
+
+    Task DeleteDeviceAsync(long deviceId, CancellationToken cancellationToken = default);
 }
 
 public sealed class TraccarService(ICredentialService credentialService, ITraccarClient client) : ITraccarService
@@ -20,6 +26,38 @@ public sealed class TraccarService(ICredentialService credentialService, ITracca
     {
         var token = await RequireTokenAsync(cancellationToken);
         return await client.GetDevicesWithPositionsAsync(token, cancellationToken);
+    }
+
+    public async Task<TraccarDevice> CreateDeviceAsync(
+        string name, string uniqueId, string emoji, CancellationToken cancellationToken = default)
+    {
+        var token = await RequireTokenAsync(cancellationToken);
+        return await client.CreateDeviceAsync(token, name, uniqueId, emoji, cancellationToken);
+    }
+
+    public async Task<TraccarDevice> UpdateDeviceAsync(
+        long deviceId, string name, string uniqueId, string emoji, CancellationToken cancellationToken = default)
+    {
+        var token = await RequireTokenAsync(cancellationToken);
+        await RequireDeviceAsync(token, deviceId, cancellationToken);
+        return await client.UpdateDeviceAsync(token, deviceId, name, uniqueId, emoji, cancellationToken);
+    }
+
+    public async Task DeleteDeviceAsync(long deviceId, CancellationToken cancellationToken = default)
+    {
+        var token = await RequireTokenAsync(cancellationToken);
+        await RequireDeviceAsync(token, deviceId, cancellationToken);
+        await client.DeleteDeviceAsync(token, deviceId, cancellationToken);
+    }
+
+    // Traccar answers an unknown id with a generic error rather than 404, so check first.
+    private async Task RequireDeviceAsync(string token, long deviceId, CancellationToken cancellationToken)
+    {
+        var devices = await client.GetDevicesWithPositionsAsync(token, cancellationToken);
+        if (devices.All(d => d.Id != deviceId))
+        {
+            throw new DeviceNotFoundException(deviceId);
+        }
     }
 
     public async Task<TraccarPosition?> GetLatestPositionAsync(long deviceId, CancellationToken cancellationToken = default)

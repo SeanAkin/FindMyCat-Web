@@ -25,4 +25,42 @@ public sealed class StubTraccarClient : ITraccarClient
         ThrowInstead is not null
             ? Task.FromException<IReadOnlyList<TraccarPosition>>(ThrowInstead)
             : Task.FromResult(Positions);
+
+    public Task<TraccarDevice> CreateDeviceAsync(
+        string token, string name, string uniqueId, string emoji, CancellationToken cancellationToken = default)
+    {
+        if (ThrowInstead is not null)
+        {
+            return Task.FromException<TraccarDevice>(ThrowInstead);
+        }
+
+        var device = new TraccarDevice(
+            Devices.Select(d => d.Id).DefaultIfEmpty().Max() + 1, name, uniqueId, "unknown", null, false, null, emoji);
+        Devices = [.. Devices, device];
+        return Task.FromResult(device);
+    }
+
+    public Task<TraccarDevice> UpdateDeviceAsync(
+        string token, long deviceId, string name, string uniqueId, string emoji, CancellationToken cancellationToken = default)
+    {
+        if (ThrowInstead is not null)
+        {
+            return Task.FromException<TraccarDevice>(ThrowInstead);
+        }
+
+        var updated = Devices.Single(d => d.Id == deviceId) with { Name = name, UniqueId = uniqueId, Emoji = emoji };
+        Devices = [.. Devices.Select(d => d.Id == deviceId ? updated : d)];
+        return Task.FromResult(updated);
+    }
+
+    public Task DeleteDeviceAsync(string token, long deviceId, CancellationToken cancellationToken = default)
+    {
+        if (ThrowInstead is not null)
+        {
+            return Task.FromException(ThrowInstead);
+        }
+
+        Devices = [.. Devices.Where(d => d.Id != deviceId)];
+        return Task.CompletedTask;
+    }
 }

@@ -117,6 +117,7 @@ export type ApiErrorCode =
   | 'invalid_telemetry_payload'
   | 'device_not_found'
   | 'device_position_not_found'
+  | 'device_rejected'
   | 'invalid_range'
   | 'range_too_large'
   | 'traccar_not_configured'

@@ -14,7 +14,8 @@ internal sealed record TraccarDeviceDto(
     string? UniqueId,
     string? Status,
     DateTimeOffset? LastUpdate,
-    bool Disabled)
+    bool Disabled,
+    TraccarDeviceAttributesDto? Attributes = null)
 {
     public TraccarDevice ToDomain(TraccarPosition? latestPosition) => new(
         Id,
@@ -23,8 +24,12 @@ internal sealed record TraccarDeviceDto(
         Status ?? "unknown",
         LastUpdate,
         Disabled,
-        latestPosition);
+        latestPosition,
+        Attributes?.Emoji);
 }
+
+internal sealed record TraccarDeviceAttributesDto(
+    [property: JsonPropertyName("emoji")] string? Emoji);
 
 internal sealed record TraccarPositionDto(
     long DeviceId,
