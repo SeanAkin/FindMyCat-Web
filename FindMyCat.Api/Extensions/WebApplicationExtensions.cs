@@ -25,11 +25,13 @@ public static class WebApplicationExtensions
         return app;
     }
 
-    public static WebApplication RejectCrossOriginHubRequests(this WebApplication app)
+    private static readonly string[] LiveUpdateRoutes = [DevicesHub.Route, TraccarSocketPassthrough.Route];
+
+    public static WebApplication RejectCrossOriginLiveUpdateRequests(this WebApplication app)
     {
         app.Use(async (context, next) =>
         {
-            if (context.Request.Path.StartsWithSegments(DevicesHub.Route) && IsCrossOrigin(context.Request))
+            if (IsLiveUpdateRequest(context.Request) && IsCrossOrigin(context.Request))
             {
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 return;
@@ -40,6 +42,9 @@ public static class WebApplicationExtensions
 
         return app;
     }
+
+    private static bool IsLiveUpdateRequest(HttpRequest request) =>
+        LiveUpdateRoutes.Any(route => request.Path.StartsWithSegments(route));
 
     internal static bool IsCrossOrigin(HttpRequest request)
     {

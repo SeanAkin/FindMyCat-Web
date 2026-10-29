@@ -77,9 +77,11 @@ public static class CoreServiceCollectionExtensions
             sp.GetRequiredService<IHubContext<DevicesHub, IDevicesClient>>(),
             sp.GetRequiredService<ILogger<DevicesHubPublisher>>(),
             liveUpdatesEnabled ? TraccarConnectionStatus.Unavailable : TraccarConnectionStatus.LiveUpdatesDisabled));
-        services.AddSingleton<ITraccarUpdatePublisher>(sp => sp.GetRequiredService<DevicesHubPublisher>());
         services.AddSingleton<DevicesHubConnections>();
-        services.AddSingleton<IConnectedClients>(sp => sp.GetRequiredService<DevicesHubConnections>());
+        services.AddSingleton<TraccarSocketPassthrough>();
+        services.AddSingleton<LiveClients>();
+        services.AddSingleton<ITraccarUpdatePublisher>(sp => sp.GetRequiredService<LiveClients>());
+        services.AddSingleton<IConnectedClients>(sp => sp.GetRequiredService<LiveClients>());
 
         if (liveUpdatesEnabled)
         {

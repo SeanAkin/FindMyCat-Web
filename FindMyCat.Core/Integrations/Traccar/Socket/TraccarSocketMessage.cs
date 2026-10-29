@@ -1,8 +1,12 @@
+using System.Text;
 using System.Text.Json;
 
 namespace FindMyCat.Core.Integrations.Traccar.Socket;
 
-public sealed record TraccarSocketMessage(IReadOnlyList<TraccarDevice> Devices, IReadOnlyList<TraccarPosition> Positions)
+public sealed record TraccarSocketMessage(
+    IReadOnlyList<TraccarDevice> Devices,
+    IReadOnlyList<TraccarPosition> Positions,
+    string Raw = "")
 {
     public bool IsEmpty => Devices.Count == 0 && Positions.Count == 0;
 
@@ -11,7 +15,8 @@ public sealed record TraccarSocketMessage(IReadOnlyList<TraccarDevice> Devices, 
         var message = JsonSerializer.Deserialize<MessageDto>(utf8Json, TraccarWireFormat.JsonOptions);
         return new TraccarSocketMessage(
             message?.Devices?.Select(d => d.ToDomain(latestPosition: null)).ToList() ?? [],
-            message?.Positions?.Select(p => p.ToDomain()).ToList() ?? []);
+            message?.Positions?.Select(p => p.ToDomain()).ToList() ?? [],
+            Encoding.UTF8.GetString(utf8Json));
     }
 
     private sealed record MessageDto(List<TraccarDeviceDto>? Devices, List<TraccarPositionDto>? Positions);

@@ -30,6 +30,8 @@ app.UseForwardedHeaders();
 
 app.UseHttpsRedirection();
 
+app.UseWebSockets();
+
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
@@ -42,10 +44,11 @@ if (isTestingEnvironment)
     app.UseRateLimiter();
 }
 
-app.RejectCrossOriginHubRequests();
+app.RejectCrossOriginLiveUpdateRequests();
 
 app.MapControllers();
 app.MapHub<DevicesHub>(DevicesHub.Route, options => options.CloseOnAuthenticationExpiration = true);
+app.Map(TraccarSocketPassthrough.Route, (HttpContext context, TraccarSocketPassthrough passthrough) => passthrough.AcceptAsync(context));
 
 app.MapFallbackToFile("index.html").AllowAnonymous();
 
