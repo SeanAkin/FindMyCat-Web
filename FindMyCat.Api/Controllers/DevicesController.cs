@@ -101,7 +101,7 @@ public class DevicesController(
         return device.UniqueId;
     }
 
-    [HttpPost("{deviceId:long}/{command}")]
+    [HttpPost("{deviceId:long}/command/{command}")]
     public async Task<IActionResult> SendCommand(long deviceId, string command, CancellationToken cancellationToken)
     {
         if (!HologramCommandExtensions.TryParse(command, out var hologramCommand))

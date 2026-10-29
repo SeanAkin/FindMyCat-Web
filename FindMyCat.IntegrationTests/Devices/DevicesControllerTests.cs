@@ -224,7 +224,7 @@ public sealed class DevicesControllerTests : IntegrationTestBase
         await ConfigureTraccarTokenAsync();
         Traccar.Devices = [new TraccarDevice(1, "Test Collar", "unique-1", "online", null, false, null)];
 
-        var response = await client.PostAsync("/api/devices/1/ping", null, TestContext.Current.CancellationToken);
+        var response = await client.PostAsync("/api/devices/1/command/ping", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
@@ -241,7 +241,7 @@ public sealed class DevicesControllerTests : IntegrationTestBase
         Traccar.Devices = [new TraccarDevice(1, "Test Collar", "unique-1", "online", null, false, null)];
         Hologram.DeviceIdsByImei["unique-1"] = 555;
 
-        var response = await client.PostAsync("/api/devices/1/ping", null, TestContext.Current.CancellationToken);
+        var response = await client.PostAsync("/api/devices/1/command/ping", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         Hologram.SentMessages.ShouldContain((555, "ping"));
@@ -257,7 +257,7 @@ public sealed class DevicesControllerTests : IntegrationTestBase
         Traccar.Devices = [new TraccarDevice(1, "Test Collar", "unique-1", "online", null, false, null)];
         Hologram.DeviceIdsByImei["unique-1"] = 555;
 
-        var response = await client.PostAsync("/api/devices/1/ping-gps", null, TestContext.Current.CancellationToken);
+        var response = await client.PostAsync("/api/devices/1/command/ping-gps", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         Hologram.SentMessages.ShouldContain((555, "ping-gps"));
@@ -273,7 +273,7 @@ public sealed class DevicesControllerTests : IntegrationTestBase
         Traccar.Devices = [new TraccarDevice(1, "Test Collar", "unique-1", "online", null, false, null)];
         Hologram.DeviceIdsByImei["unique-1"] = 555;
 
-        var response = await client.PostAsync("/api/devices/1/self-destruct", null, TestContext.Current.CancellationToken);
+        var response = await client.PostAsync("/api/devices/1/command/self-destruct", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         Hologram.SentMessages.ShouldBeEmpty();
@@ -288,7 +288,7 @@ public sealed class DevicesControllerTests : IntegrationTestBase
         await ConfigureHologramKeyAsync();
         Traccar.Devices = [new TraccarDevice(1, "Test Collar", "unique-1", "online", null, false, null)];
 
-        var response = await client.PostAsync("/api/devices/1/lost", null, TestContext.Current.CancellationToken);
+        var response = await client.PostAsync("/api/devices/1/command/lost", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
@@ -305,7 +305,7 @@ public sealed class DevicesControllerTests : IntegrationTestBase
         Traccar.Devices = [new TraccarDevice(1, "Test Collar", "unique-1", "online", null, false, null)];
         Hologram.ThrowInstead = new HologramCredentialRejectedException("rejected");
 
-        var response = await client.PostAsync("/api/devices/1/active", null, TestContext.Current.CancellationToken);
+        var response = await client.PostAsync("/api/devices/1/command/active", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);
@@ -322,7 +322,7 @@ public sealed class DevicesControllerTests : IntegrationTestBase
         Traccar.Devices = [new TraccarDevice(1, "Test Collar", "unique-1", "online", null, false, null)];
         Hologram.ThrowInstead = new HologramUnavailableException("boom");
 
-        var response = await client.PostAsync("/api/devices/1/active", null, TestContext.Current.CancellationToken);
+        var response = await client.PostAsync("/api/devices/1/command/active", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadGateway);
         var body = await response.Content.ReadFromJsonAsync<ApiError>(TestContext.Current.CancellationToken);

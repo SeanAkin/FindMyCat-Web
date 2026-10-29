@@ -44,10 +44,10 @@ export const getDeviceEvents = (
 }
 
 export const pingDevice = (deviceId: number, signal?: AbortSignal) =>
-  api.post<void>(`/api/devices/${deviceId}/ping`, undefined, signal)
+  api.post<void>(`/api/devices/${deviceId}/command/ping`, undefined, signal)
 
 export const markDeviceLost = (deviceId: number, signal?: AbortSignal) =>
-  api.post<void>(`/api/devices/${deviceId}/lost`, undefined, signal)
+  api.post<void>(`/api/devices/${deviceId}/command/lost`, undefined, signal)
 
 export const markDeviceActive = (deviceId: number, signal?: AbortSignal) =>
-  api.post<void>(`/api/devices/${deviceId}/active`, undefined, signal)
+  api.post<void>(`/api/devices/${deviceId}/command/active`, undefined, signal)

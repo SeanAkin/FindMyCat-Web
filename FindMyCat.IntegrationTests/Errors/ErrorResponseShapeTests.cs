@@ -98,7 +98,7 @@ public sealed class ErrorResponseShapeTests : IntegrationTestBase
         await ConfigureHologramKeyAsync();
         Traccar.Devices = [new TraccarDevice(1, "Collar", imei, "online", null, false, LatestPosition: null)];
 
-        var response = await client.PostAsync("/api/devices/1/ping", content: null, TestContext.Current.CancellationToken);
+        var response = await client.PostAsync("/api/devices/1/command/ping", content: null, TestContext.Current.CancellationToken);
 
         var body = await AssertApiErrorAsync(response, HttpStatusCode.NotFound, ErrorCodes.HologramDeviceNotFound);
         body.Message.ShouldNotContain(imei);
