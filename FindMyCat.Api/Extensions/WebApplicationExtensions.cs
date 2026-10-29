@@ -1,5 +1,6 @@
 using FindMyCat.Api.Errors;
 using FindMyCat.Api.Hubs;
+using FindMyCat.Core.Services;
 using FindMyCat.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -61,5 +62,23 @@ public static class WebApplicationExtensions
         db.Database.Migrate();
 
         return app;
+    }
+
+    // Lets a deployment hand over the first Traccar token instead of someone pasting it into the admin page.
+    // Only fills an empty slot, so a token set from the admin page later is never overwritten.
+    public static async Task SeedTraccarTokenAsync(this WebApplication app)
+    {
+        var token = app.Configuration["Traccar:ApiToken"];
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return;
+        }
+
+        using var scope = app.Services.CreateScope();
+        var credentialService = scope.ServiceProvider.GetRequiredService<ICredentialService>();
+        if (string.IsNullOrEmpty(await credentialService.GetTraccarTokenAsync()))
+        {
+            await credentialService.SetTraccarTokenAsync(token);
+        }
     }
 }
