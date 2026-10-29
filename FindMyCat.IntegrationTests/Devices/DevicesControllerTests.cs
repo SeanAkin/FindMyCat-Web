@@ -65,6 +65,29 @@ public sealed class DevicesControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Positions_returns_latest_position_of_devices_that_have_one()
+    {
+        var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
+        using var client = CreateAuthenticatedClient(user);
+        await ConfigureTraccarTokenAsync();
+
+        var at = new DateTimeOffset(2025, 1, 2, 3, 4, 5, TimeSpan.Zero);
+        var position = new TraccarPosition(1, at, at, at, 12.34, 56.78, 0, 0, 0, 8, true, 55, 7, Id: 100);
+        Traccar.Devices =
+        [
+            new TraccarDevice(1, "Test Device One", "unique-1", "online", at, false, position),
+            new TraccarDevice(2, "Test Device Two", "unique-2", "offline", null, true, LatestPosition: null)
+        ];
+
+        var positions = await client.GetFromJsonAsync<List<PositionResponse>>("/api/positions", TestContext.Current.CancellationToken);
+
+        positions!.Count.ShouldBe(1);
+        positions[0].Id.ShouldBe(100);
+        positions[0].DeviceId.ShouldBe(1);
+        positions[0].Attributes.Sat.ShouldBe(7);
+    }
+
+    [Fact]
     public async Task Devices_returns_409_when_traccar_rejects_credential()
     {
         var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
