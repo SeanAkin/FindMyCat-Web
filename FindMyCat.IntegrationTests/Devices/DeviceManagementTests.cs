@@ -11,7 +11,7 @@ namespace FindMyCat.IntegrationTests.Devices;
 
 public sealed class DeviceManagementTests : IntegrationTestBase
 {
-    private static readonly SaveDeviceRequest Collar = new("Mochi", "collar-1", "🐈");
+    private static readonly SaveDeviceRequest Collar = new("Mochi", "collar-1", new DeviceAttributes("🐈"));
 
     public DeviceManagementTests(FindMyCatApiFactory factory, ITestOutputHelper output)
         : base(factory, output)
@@ -36,7 +36,7 @@ public sealed class DeviceManagementTests : IntegrationTestBase
         var device = await response.Content.ReadFromJsonAsync<DeviceResponse>(TestContext.Current.CancellationToken);
         device!.Name.ShouldBe("Mochi");
         device.UniqueId.ShouldBe("collar-1");
-        device.Emoji.ShouldBe("🐈");
+        device.Attributes.Emoji.ShouldBe("🐈");
         Traccar.Devices.ShouldContain(d => d.UniqueId == "collar-1");
     }
 
@@ -51,7 +51,7 @@ public sealed class DeviceManagementTests : IntegrationTestBase
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var device = await response.Content.ReadFromJsonAsync<DeviceResponse>(TestContext.Current.CancellationToken);
         device!.Name.ShouldBe("Mochi");
-        device.Emoji.ShouldBe("🐈");
+        device.Attributes.Emoji.ShouldBe("🐈");
     }
 
     [Fact]
@@ -97,7 +97,7 @@ public sealed class DeviceManagementTests : IntegrationTestBase
         using var client = await CreateClientAsync(UserRole.Administrator);
 
         var response = await client.PostAsJsonAsync(
-            "/api/devices", Collar with { Emoji = "" }, TestContext.Current.CancellationToken);
+            "/api/devices", Collar with { Attributes = new DeviceAttributes("") }, TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         Traccar.Devices.ShouldBeEmpty();

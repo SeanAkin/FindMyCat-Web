@@ -18,7 +18,8 @@ public sealed class SaveDeviceRequestValidator : AbstractValidator<SaveDeviceReq
     {
         RuleFor(request => request.Name).NotEmpty();
         RuleFor(request => request.UniqueId).NotEmpty();
-        RuleFor(request => request.Emoji).NotEmpty();
+        RuleFor(request => request.Attributes).NotNull();
+        RuleFor(request => request.Attributes!.Emoji).NotEmpty().When(request => request.Attributes is not null);
     }
 }
 

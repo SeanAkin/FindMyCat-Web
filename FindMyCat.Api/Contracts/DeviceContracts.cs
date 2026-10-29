@@ -13,7 +13,7 @@ public sealed record DeviceResponse(
     string Status,
     DateTimeOffset? LastUpdate,
     bool Disabled,
-    string? Emoji,
+    DeviceAttributes Attributes,
     PositionResponse? Position)
 {
     public static DeviceResponse FromDomain(TraccarDevice device) => new(
@@ -23,11 +23,14 @@ public sealed record DeviceResponse(
         device.Status,
         device.LastUpdate,
         device.Disabled,
-        device.Emoji,
+        new DeviceAttributes(device.Emoji),
         device.LatestPosition is null ? null : PositionResponse.FromDomain(device.LatestPosition));
 }
 
-public sealed record SaveDeviceRequest(string Name, string UniqueId, string Emoji);
+// Same shape as Traccar's device attributes, so clients written against Traccar keep working.
+public sealed record DeviceAttributes(string? Emoji);
+
+public sealed record SaveDeviceRequest(string Name, string UniqueId, DeviceAttributes? Attributes);
 
 public sealed record PositionResponse(
     long DeviceId,

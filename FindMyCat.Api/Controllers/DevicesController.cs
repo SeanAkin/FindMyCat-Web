@@ -31,7 +31,7 @@ public class DevicesController(
         [FromBody] SaveDeviceRequest request, CancellationToken cancellationToken)
     {
         var device = await traccarService.CreateDeviceAsync(
-            request.Name, request.UniqueId, request.Emoji, cancellationToken);
+            request.Name, request.UniqueId, request.Attributes!.Emoji!, cancellationToken);
         return StatusCode(StatusCodes.Status201Created, DeviceResponse.FromDomain(device));
     }
 
@@ -41,7 +41,7 @@ public class DevicesController(
         long deviceId, [FromBody] SaveDeviceRequest request, CancellationToken cancellationToken)
     {
         var device = await traccarService.UpdateDeviceAsync(
-            deviceId, request.Name, request.UniqueId, request.Emoji, cancellationToken);
+            deviceId, request.Name, request.UniqueId, request.Attributes!.Emoji!, cancellationToken);
         return Ok(DeviceResponse.FromDomain(device));
     }
 
