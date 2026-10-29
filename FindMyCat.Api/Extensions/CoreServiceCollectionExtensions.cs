@@ -58,6 +58,7 @@ public static class CoreServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(15);
         }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false });
 
+        services.AddSingleton(new HologramSettings(configuration["Hologram:OrgId"]));
         services.AddHttpClient<IHologramClient, HologramClient>(client =>
         {
             client.BaseAddress = new Uri("https://dashboard.hologram.io/");

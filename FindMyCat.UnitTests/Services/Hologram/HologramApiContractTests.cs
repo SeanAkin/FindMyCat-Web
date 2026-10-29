@@ -151,7 +151,7 @@ public class HologramApiContractTests(HologramOpenApiSpecFixture fixture) : ICla
             };
         });
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://hologram.test/") };
-        var client = new HologramClient(httpClient, NullLogger<HologramClient>.Instance);
+        var client = new HologramClient(httpClient, new HologramSettings(null), NullLogger<HologramClient>.Instance);
 
         await client.SendMessageAsync("key", 42, "ping");
 

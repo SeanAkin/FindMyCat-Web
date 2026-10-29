@@ -12,7 +12,7 @@ public class HologramClientTests
     private static HologramClient CreateClient(StubHttpMessageHandler handler)
     {
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://hologram.test/") };
-        return new HologramClient(httpClient, NullLogger<HologramClient>.Instance);
+        return new HologramClient(httpClient, new HologramSettings(null), NullLogger<HologramClient>.Instance);
     }
 
     [Fact]
@@ -36,6 +36,19 @@ public class HologramClientTests
         var id = await client.FindDeviceIdByImeiAsync("key", "no-match", TestContext.Current.CancellationToken);
 
         id.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task FindDeviceIdByImei_searches_within_the_configured_organization()
+    {
+        var handler = StubHttpMessageHandler.ReturningJson(_ =>
+            (HttpStatusCode.OK, """{"success":true,"data":[{"id":555,"name":"unique-1"}]}"""));
+        var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://hologram.test/") };
+        var client = new HologramClient(httpClient, new HologramSettings("57606"), NullLogger<HologramClient>.Instance);
+
+        await client.FindDeviceIdByImeiAsync("key", "unique-1", TestContext.Current.CancellationToken);
+
+        handler.Requests.Single().RequestUri!.Query.ShouldBe("?name=unique-1&orgid=57606");
     }
 
     [Fact]

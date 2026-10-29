@@ -17,7 +17,7 @@ public interface IHologramClient
     Task SendMessageAsync(string apiKey, int hologramDeviceId, string command, CancellationToken cancellationToken = default);
 }
 
-public sealed class HologramClient(HttpClient httpClient, ILogger<HologramClient> logger) : IHologramClient
+public sealed class HologramClient(HttpClient httpClient, HologramSettings settings, ILogger<HologramClient> logger) : IHologramClient
 {
     // Outdoor location engine (NewUdpListener.c) binds this port and expects "UDP" delivery
     private const int CollarUdpPort = 12345;
@@ -29,7 +29,13 @@ public sealed class HologramClient(HttpClient httpClient, ILogger<HologramClient
     {
         httpClient.DefaultRequestHeaders.Authorization = BasicAuth(apiKey);
 
-        using var response = await httpClient.GetAsync($"api/1/devices/?name={Uri.EscapeDataString(imei)}", cancellationToken);
+        var query = $"api/1/devices/?name={Uri.EscapeDataString(imei)}";
+        if (!string.IsNullOrWhiteSpace(settings.OrgId))
+        {
+            query += $"&orgid={Uri.EscapeDataString(settings.OrgId)}";
+        }
+
+        using var response = await httpClient.GetAsync(query, cancellationToken);
         var payload = await ReadResponseAsync<DevicesListResponseDto>(response, cancellationToken);
         return payload.Data?.FirstOrDefault()?.Id;
     }
