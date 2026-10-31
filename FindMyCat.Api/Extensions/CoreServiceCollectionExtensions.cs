@@ -5,6 +5,7 @@ using FindMyCat.Core;
 using FindMyCat.Core.Integrations.Hologram;
 using FindMyCat.Core.Integrations.Traccar;
 using FindMyCat.Core.Integrations.Traccar.Socket;
+using FindMyCat.Core.Integrations.WifiLocation;
 using FindMyCat.Core.Security;
 using FindMyCat.Core.Services;
 using FindMyCat.Data;
@@ -59,6 +60,23 @@ public static class CoreServiceCollectionExtensions
             client.BaseAddress = traccarBaseAddressWithResolvableRelativePaths;
             client.Timeout = TimeSpan.FromSeconds(15);
         }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false });
+
+        // Traccar takes OsmAnd positions on its own port, 5055 unless configured otherwise.
+        var osmAndUrl = configuration["Traccar:OsmAndUrl"] is { Length: > 0 } configured
+            ? new Uri(configured)
+            : new UriBuilder(traccarBaseUri) { Port = 5055, Path = "/" }.Uri;
+        services.AddHttpClient<ITraccarPositionClient, TraccarPositionClient>(client =>
+        {
+            client.BaseAddress = osmAndUrl;
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
+
+        services.AddSingleton(new GeolocationSettings(configuration["Google:GeolocationApiKey"]));
+        services.AddHttpClient<IGoogleGeolocationClient, GoogleGeolocationClient>(client =>
+        {
+            client.BaseAddress = new Uri("https://www.googleapis.com/");
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
 
         services.AddSingleton(new HologramSettings(configuration["Hologram:OrgId"]));
         services.AddHttpClient<IHologramClient, HologramClient>(client =>

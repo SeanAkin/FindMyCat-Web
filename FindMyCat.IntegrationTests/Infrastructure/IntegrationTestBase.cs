@@ -30,6 +30,8 @@ public abstract class IntegrationTestBase : IClassFixture<FindMyCatApiFactory>, 
     protected StubTraccarClient Traccar => Factory.TraccarClient;
     protected StubHologramClient Hologram => Factory.HologramClient;
     protected StubTraccarSocketClient TraccarSocket => Factory.TraccarSocketClient;
+    protected StubGoogleGeolocationClient Google => Factory.GoogleGeolocationClient;
+    protected StubTraccarPositionClient TraccarPositions => Factory.TraccarPositionClient;
 
     protected IntegrationTestBase(FindMyCatApiFactory factory, ITestOutputHelper output)
     {
@@ -40,6 +42,8 @@ public abstract class IntegrationTestBase : IClassFixture<FindMyCatApiFactory>, 
         factory.TraccarClient.Reset();
         factory.HologramClient.Reset();
         factory.TraccarSocketClient.Reset();
+        factory.GoogleGeolocationClient.Reset();
+        factory.TraccarPositionClient.Reset();
         ResetSharedCredentialVault();
     }
 

@@ -14,3 +14,12 @@ public sealed class IngestStatusRequestValidator : AbstractValidator<IngestStatu
             .WithMessage("'payload' is required.");
     }
 }
+
+public sealed class IngestWifiScanRequestValidator : AbstractValidator<IngestWifiScanRequest>
+{
+    public IngestWifiScanRequestValidator()
+    {
+        RuleFor(request => request.Id).NotEmpty();
+        RuleFor(request => request.Scan).NotEmpty();
+    }
+}

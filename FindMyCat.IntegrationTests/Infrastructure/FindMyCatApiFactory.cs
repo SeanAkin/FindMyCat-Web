@@ -1,6 +1,7 @@
 using FindMyCat.Core.Integrations.Hologram;
 using FindMyCat.Core.Integrations.Traccar;
 using FindMyCat.Core.Integrations.Traccar.Socket;
+using FindMyCat.Core.Integrations.WifiLocation;
 using FindMyCat.Data;
 using FindMyCat.IntegrationTests.Stubs;
 using Microsoft.AspNetCore.Authentication;
@@ -29,6 +30,8 @@ public sealed class FindMyCatApiFactory : WebApplicationFactory<Program>, IAsync
     public StubTraccarClient TraccarClient { get; } = new();
     public StubHologramClient HologramClient { get; } = new();
     public StubTraccarSocketClient TraccarSocketClient { get; } = new();
+    public StubGoogleGeolocationClient GoogleGeolocationClient { get; } = new();
+    public StubTraccarPositionClient TraccarPositionClient { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -50,6 +53,8 @@ public sealed class FindMyCatApiFactory : WebApplicationFactory<Program>, IAsync
             services.AddSingleton<ITraccarClient>(TraccarClient);
             services.AddSingleton<IHologramClient>(HologramClient);
             services.AddSingleton<ITraccarSocketClient>(TraccarSocketClient);
+            services.AddSingleton<IGoogleGeolocationClient>(GoogleGeolocationClient);
+            services.AddSingleton<ITraccarPositionClient>(TraccarPositionClient);
         });
 
         builder.ConfigureLogging(logging =>

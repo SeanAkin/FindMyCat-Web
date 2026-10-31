@@ -17,6 +17,7 @@ public static class DependencyInjection
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<ICredentialService, CredentialService>();
         services.AddScoped<ITelemetryIngestService, TelemetryIngestService>();
+        services.AddScoped<IWifiLocator, WifiLocator>();
         services.AddScoped<ITraccarService, TraccarService>();
         services.AddSingleton<TraccarCredentialChangeSignal>();
         services.AddSingleton<ITraccarCredentialChangeNotifier>(sp => sp.GetRequiredService<TraccarCredentialChangeSignal>());
