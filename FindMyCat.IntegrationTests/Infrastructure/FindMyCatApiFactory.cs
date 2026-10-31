@@ -23,6 +23,9 @@ public sealed class FindMyCatApiFactory : WebApplicationFactory<Program>, IAsync
 
     private string ConnectionString => $"Data Source={_dbPath}";
 
+    public string FirmwareDirectory { get; } =
+        Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), $"findmycat-firmware-{Guid.NewGuid():N}")).FullName;
+
     public StubTraccarClient TraccarClient { get; } = new();
     public StubHologramClient HologramClient { get; } = new();
     public StubTraccarSocketClient TraccarSocketClient { get; } = new();
@@ -104,6 +107,7 @@ public sealed class FindMyCatApiFactory : WebApplicationFactory<Program>, IAsync
             ["ConnectionStrings:Default"] = ConnectionString,
             ["Authentication:Google:ClientId"] = "test-client-id",
             ["Authentication:Google:ClientSecret"] = "test-client-secret",
-            ["Traccar:BaseUrl"] = "https://traccar.invalid/"
+            ["Traccar:BaseUrl"] = "https://traccar.invalid/",
+            ["Firmware:Directory"] = FirmwareDirectory
         };
 }

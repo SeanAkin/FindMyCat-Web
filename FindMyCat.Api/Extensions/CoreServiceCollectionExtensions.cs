@@ -1,3 +1,4 @@
+using FindMyCat.Api.Controllers;
 using FindMyCat.Api.Hubs;
 using FindMyCat.Api.Json;
 using FindMyCat.Core;
@@ -20,6 +21,7 @@ public static class CoreServiceCollectionExtensions
         services.AddCredentialProtection(configuration);
         services.AddIntegrationClients(configuration);
         services.AddLiveUpdates(configuration);
+        services.AddSingleton(new FirmwareSettings(configuration["Firmware:Directory"] ?? "/firmware"));
 
         return services;
     }
