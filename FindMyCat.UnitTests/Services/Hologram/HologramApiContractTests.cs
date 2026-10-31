@@ -93,7 +93,10 @@ public class HologramApiContractTests(HologramOpenApiSpecFixture fixture) : ICla
     [Fact]
     public void SendMessage_response_dto_satisfies_the_documented_schema()
     {
-        var sampleResponse = new HologramClient.SendMessageResponseDto(Success: true, Error: null);
+        var sampleResponse = new HologramClient.SendMessageResponseDto(
+            Success: true,
+            Error: null,
+            Data: [new HologramClient.QueuedMessageDto("cc9459f1-33b6-4365-9549-55cb3b12c9ec")]);
 
         AssertDtoSatisfiesSchema(ResponseSchemaPointer("/devices/messages", HttpMethod.Post, "200"), sampleResponse);
     }

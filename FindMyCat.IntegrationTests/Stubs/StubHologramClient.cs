@@ -20,14 +20,14 @@ public sealed class StubHologramClient : IHologramClient
             ? Task.FromException<int?>(ThrowInstead)
             : Task.FromResult(DeviceIdsByImei.TryGetValue(imei, out var id) ? id : (int?)null);
 
-    public Task SendMessageAsync(string apiKey, int hologramDeviceId, string command, CancellationToken cancellationToken = default)
+    public Task<string?> SendMessageAsync(string apiKey, int hologramDeviceId, string command, CancellationToken cancellationToken = default)
     {
         if (ThrowInstead is not null)
         {
-            return Task.FromException(ThrowInstead);
+            return Task.FromException<string?>(ThrowInstead);
         }
 
         SentMessages.Add((hologramDeviceId, command));
-        return Task.CompletedTask;
+        return Task.FromResult<string?>($"message-{SentMessages.Count}");
     }
 }

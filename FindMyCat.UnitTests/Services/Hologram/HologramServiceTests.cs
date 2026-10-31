@@ -11,11 +11,12 @@ public class HologramServiceTests
     private readonly Mock<ICredentialService> _credentials = new();
     private readonly Mock<ITraccarService> _traccar = new();
     private readonly Mock<IHologramClient> _client = new();
+    private readonly Mock<ITelemetryIngestService> _telemetry = new();
     private readonly HologramService _sut;
 
     public HologramServiceTests()
     {
-        _sut = new HologramService(_credentials.Object, _traccar.Object, _client.Object);
+        _sut = new HologramService(_credentials.Object, _traccar.Object, _client.Object, _telemetry.Object);
     }
 
     private void HasApiKey(string? apiKey) =>

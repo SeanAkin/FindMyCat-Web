@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using FindMyCat.Api.Contracts;
 using FindMyCat.Api.Errors;
 using FindMyCat.Core.Errors;
@@ -245,6 +246,43 @@ public sealed class DevicesControllerTests : IntegrationTestBase
 
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         Hologram.SentMessages.ShouldContain((555, "ping"));
+    }
+
+    [Fact]
+    public async Task Sending_a_command_records_it_as_sent()
+    {
+        var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
+        using var client = CreateAuthenticatedClient(user);
+        await ConfigureTraccarTokenAsync();
+        await ConfigureHologramKeyAsync();
+        Traccar.Devices = [new TraccarDevice(1, "Test Collar", "sent-collar", "online", null, false, null)];
+        Hologram.DeviceIdsByImei["sent-collar"] = 555;
+
+        await client.PostAsync("/api/devices/1/command/ping", null, TestContext.Current.CancellationToken);
+
+        var command = (await client.GetFromJsonAsync<JsonElement>("/api/devices/1/state", TestContext.Current.CancellationToken))
+            .GetProperty("command");
+        command.GetProperty("command").GetString().ShouldBe("ping");
+        command.GetProperty("status").GetString().ShouldBe("sent");
+        command.GetProperty("messageId").GetString().ShouldBe("message-1");
+    }
+
+    [Fact]
+    public async Task A_command_hologram_cannot_send_is_recorded_as_failed()
+    {
+        var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
+        using var client = CreateAuthenticatedClient(user);
+        await ConfigureTraccarTokenAsync();
+        await ConfigureHologramKeyAsync();
+        Traccar.Devices = [new TraccarDevice(1, "Test Collar", "failed-collar", "online", null, false, null)];
+        Hologram.ThrowInstead = new HologramUnavailableException("boom");
+
+        await client.PostAsync("/api/devices/1/command/lost", null, TestContext.Current.CancellationToken);
+
+        var command = (await client.GetFromJsonAsync<JsonElement>("/api/devices/1/state", TestContext.Current.CancellationToken))
+            .GetProperty("command");
+        command.GetProperty("command").GetString().ShouldBe("lost");
+        command.GetProperty("status").GetString().ShouldBe("fail");
     }
 
     [Fact]

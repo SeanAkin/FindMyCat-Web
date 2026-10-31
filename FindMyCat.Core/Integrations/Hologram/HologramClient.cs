@@ -14,7 +14,7 @@ public interface IHologramClient
 {
     Task<int?> FindDeviceIdByImeiAsync(string apiKey, string imei, CancellationToken cancellationToken = default);
 
-    Task SendMessageAsync(string apiKey, int hologramDeviceId, string command, CancellationToken cancellationToken = default);
+    Task<string?> SendMessageAsync(string apiKey, int hologramDeviceId, string command, CancellationToken cancellationToken = default);
 }
 
 public sealed class HologramClient(HttpClient httpClient, HologramSettings settings, ILogger<HologramClient> logger) : IHologramClient
@@ -40,7 +40,7 @@ public sealed class HologramClient(HttpClient httpClient, HologramSettings setti
         return payload.Data?.FirstOrDefault()?.Id;
     }
 
-    public async Task SendMessageAsync(string apiKey, int hologramDeviceId, string command, CancellationToken cancellationToken = default)
+    public async Task<string?> SendMessageAsync(string apiKey, int hologramDeviceId, string command, CancellationToken cancellationToken = default)
     {
         httpClient.DefaultRequestHeaders.Authorization = BasicAuth(apiKey);
 
@@ -49,7 +49,8 @@ public sealed class HologramClient(HttpClient httpClient, HologramSettings setti
             new SendMessageRequestDto([hologramDeviceId], command, CollarUdpPort, CollarProtocol),
             JsonOptions,
             cancellationToken);
-        await ReadResponseAsync<SendMessageResponseDto>(response, cancellationToken);
+        var payload = await ReadResponseAsync<SendMessageResponseDto>(response, cancellationToken);
+        return payload.Data?.FirstOrDefault()?.MessageId;
     }
 
     private static AuthenticationHeaderValue BasicAuth(string apiKey) =>
@@ -97,5 +98,7 @@ public sealed class HologramClient(HttpClient httpClient, HologramSettings setti
     // Hologram expects the contract in this format for sending messages to our sim (device)
     internal sealed record SendMessageRequestDto([property: JsonPropertyName("deviceids")] int[] DeviceIds, string Data, int Port, string Protocol);
 
-    internal sealed record SendMessageResponseDto(bool Success, string? Error) : IHologramEnvelope;
+    internal sealed record SendMessageResponseDto(bool Success, string? Error, List<QueuedMessageDto>? Data) : IHologramEnvelope;
+
+    internal sealed record QueuedMessageDto([property: JsonPropertyName("messageid")] string? MessageId);
 }
