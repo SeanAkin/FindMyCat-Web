@@ -1,38 +1,43 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
-import type { DeviceEventResponse } from '@/api/types'
+import type { DeviceEventResponse, DeviceStateEntry } from '@/api/types'
 import { DeviceTelemetryPanel } from '@/components/devices/DeviceTelemetryPanel'
 import { useDevicesStore } from '@/stores/devicesStore'
 
+const networkFields = { status: 'registered', mode: 7, edrx_s: 81.92 }
+
+const commandFields = {
+  command: 'ping',
+  status: 'ok',
+  method: 'gnss',
+  satellites: 8,
+  elapsed_s: 42,
+  battery: 90,
+  uptime_s: 3600,
+}
+
 const networkEvent: DeviceEventResponse = {
   id: 2,
-  receivedAt: '2026-08-16T11:00:00.000Z',
+  receivedAt: '2026-08-16T11:00:00Z',
   kind: 'network',
-  data: { status: 'registered', mode: 7, edrxSeconds: 81.92 },
-  raw: {},
+  payload: networkFields,
 }
 
 const commandEvent: DeviceEventResponse = {
   id: 1,
-  receivedAt: '2026-08-16T10:00:00.000Z',
+  receivedAt: '2026-08-16T10:00:00Z',
   kind: 'command',
-  data: {
-    command: 'ping',
-    status: 'ok',
-    reason: null,
-    method: 'gnss',
-    satellites: 8,
-    elapsedSeconds: 42,
-    battery: 90,
-    uptimeSeconds: 3600,
-  },
-  raw: {},
+  payload: commandFields,
 }
+
+const networkState: DeviceStateEntry = { id: 2, receivedAt: '2026-08-16T11:00:00Z', ...networkFields }
+
+const commandState: DeviceStateEntry = { id: 1, receivedAt: '2026-08-16T10:00:00Z', ...commandFields }
 
 describe('DeviceTelemetryPanel', () => {
   afterEach(() => {
     useDevicesStore.setState({
-      deviceState: [],
+      deviceState: {},
       deviceStateStatus: 'idle',
       deviceStateError: null,
       deviceEvents: [],
@@ -76,7 +81,7 @@ describe('DeviceTelemetryPanel', () => {
   it('renders the network and command summaries from state', () => {
     useDevicesStore.setState({
       deviceStateStatus: 'success',
-      deviceState: [networkEvent, commandEvent],
+      deviceState: { network: networkState, command: commandState },
     })
 
     render(<DeviceTelemetryPanel deviceId={1} />)
@@ -90,7 +95,7 @@ describe('DeviceTelemetryPanel', () => {
   it('says quietly when a kind is missing', () => {
     useDevicesStore.setState({
       deviceStateStatus: 'success',
-      deviceState: [networkEvent],
+      deviceState: { network: networkState },
     })
 
     render(<DeviceTelemetryPanel deviceId={1} />)
@@ -101,7 +106,7 @@ describe('DeviceTelemetryPanel', () => {
   it('renders the empty state when no telemetry has arrived', () => {
     useDevicesStore.setState({
       deviceStateStatus: 'success',
-      deviceState: [],
+      deviceState: {},
     })
 
     render(<DeviceTelemetryPanel deviceId={1} />)
@@ -129,8 +134,7 @@ describe('DeviceTelemetryPanel', () => {
           id: 9,
           receivedAt: '2026-08-16T12:00:00.000Z',
           kind: 'firmware',
-          data: null,
-          raw: { version: '1.2.3' },
+          payload: { version: '1.2.3' },
         },
       ],
     })

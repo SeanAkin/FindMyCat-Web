@@ -23,25 +23,25 @@ const NETWORK_MODES: Record<number, string> = {
   9: 'NB-IoT',
 }
 
-function formatMode(mode: number | null): string {
-  if (mode === null) return 'Unknown'
+function formatMode(mode: number | undefined): string {
+  if (mode === undefined) return 'Unknown'
   return NETWORK_MODES[mode] ?? String(mode)
 }
 
-function formatSeconds(seconds: number | null): string {
-  return seconds !== null ? `${seconds}s` : 'Unknown'
+function formatSeconds(seconds: number | undefined): string {
+  return seconds !== undefined ? `${seconds}s` : 'Unknown'
 }
 
-function formatText(value: string | null): string {
+function formatText(value: string | undefined): string {
   return value && value.trim() !== '' ? value : 'Unknown'
 }
 
-function networkOf(event: DeviceEventResponse | null): NetworkTelemetry | null {
-  return event ? (event.data as NetworkTelemetry | null) : null
+function networkOf(fields: object | null | undefined): NetworkTelemetry | null {
+  return (fields as NetworkTelemetry | undefined) ?? null
 }
 
-function commandOf(event: DeviceEventResponse | null): CommandTelemetry | null {
-  return event ? (event.data as CommandTelemetry | null) : null
+function commandOf(fields: object | null | undefined): CommandTelemetry | null {
+  return (fields as CommandTelemetry | undefined) ?? null
 }
 
 interface DeviceTelemetryPanelProps {
@@ -74,10 +74,8 @@ export function DeviceTelemetryPanel({ deviceId }: DeviceTelemetryPanelProps) {
     return () => window.clearInterval(intervalId)
   }, [refresh])
 
-  const networkEvent =
-    deviceState.find((event) => event.kind === 'network') ?? null
-  const commandEvent =
-    deviceState.find((event) => event.kind === 'command') ?? null
+  const networkEvent = deviceState.network ?? null
+  const commandEvent = deviceState.command ?? null
   const network = networkOf(networkEvent)
   const command = commandOf(commandEvent)
 
@@ -114,7 +112,7 @@ export function DeviceTelemetryPanel({ deviceId }: DeviceTelemetryPanelProps) {
             )
           }
         >
-          {deviceState.length === 0 ? (
+          {Object.keys(deviceState).length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No telemetry reported yet.
             </p>
@@ -130,7 +128,7 @@ export function DeviceTelemetryPanel({ deviceId }: DeviceTelemetryPanelProps) {
                     <Stat label="Mode" value={formatMode(network.mode)} />
                     <Stat
                       label="eDRX"
-                      value={formatSeconds(network.edrxSeconds)}
+                      value={formatSeconds(network.edrx_s)}
                     />
                     {networkEvent && (
                       <Stat
@@ -232,30 +230,30 @@ export function DeviceTelemetryPanel({ deviceId }: DeviceTelemetryPanelProps) {
 
 function EventDetail({ event }: { event: DeviceEventResponse }) {
   if (event.kind === 'network') {
-    const network = networkOf(event)
+    const network = networkOf(event.payload)
     return (
       <span className="text-muted-foreground">
-        {formatText(network?.status ?? null)} ·{' '}
-        {formatMode(network?.mode ?? null)} · eDRX{' '}
-        {formatSeconds(network?.edrxSeconds ?? null)}
+        {formatText(network?.status)} ·{' '}
+        {formatMode(network?.mode)} · eDRX{' '}
+        {formatSeconds(network?.edrx_s)}
       </span>
     )
   }
 
   if (event.kind === 'command') {
-    const command = commandOf(event)
+    const command = commandOf(event.payload)
     return (
       <span className="text-muted-foreground">
-        {formatText(command?.command ?? null)} ·{' '}
-        {formatText(command?.status ?? null)} (
-        {formatText(command?.method ?? null)})
+        {formatText(command?.command)} ·{' '}
+        {formatText(command?.status)} (
+        {formatText(command?.method)})
       </span>
     )
   }
 
   return (
     <pre className="overflow-x-auto rounded bg-muted p-2 text-xs text-muted-foreground">
-      {JSON.stringify(event.raw, null, 2)}
+      {JSON.stringify(event.payload, null, 2)}
     </pre>
   )
 }

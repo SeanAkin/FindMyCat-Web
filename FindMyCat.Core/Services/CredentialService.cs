@@ -27,6 +27,8 @@ public interface ICredentialService
 
     Task<string> RotateIngestKeyAsync(CancellationToken cancellationToken = default);
 
+    Task SetIngestKeyAsync(string apiKey, CancellationToken cancellationToken = default);
+
     Task DeleteIngestKeyAsync(CancellationToken cancellationToken = default);
 
     Task<bool> ValidateIngestKeyAsync(string presentedKey, CancellationToken cancellationToken = default);
@@ -109,10 +111,15 @@ public sealed class CredentialService(
     public async Task<string> RotateIngestKeyAsync(CancellationToken cancellationToken = default)
     {
         var apiKey = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(IngestKeySizeBytes));
+        await SetIngestKeyAsync(apiKey, cancellationToken);
+        return apiKey;
+    }
+
+    public async Task SetIngestKeyAsync(string apiKey, CancellationToken cancellationToken = default)
+    {
         var credential = await GetOrCreateAsync(cancellationToken);
         credential.IngestApiKeyHash = HashIngestKey(apiKey);
         await SaveAsync(credential, cancellationToken);
-        return apiKey;
     }
 
     public async Task DeleteIngestKeyAsync(CancellationToken cancellationToken = default)

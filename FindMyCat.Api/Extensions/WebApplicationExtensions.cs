@@ -69,8 +69,6 @@ public static class WebApplicationExtensions
         return app;
     }
 
-    // Lets a deployment hand over the first Traccar token and Hologram key instead of someone pasting them
-    // into the admin page. Only fills empty slots, so values set from the admin page later are never overwritten.
     public static async Task SeedCredentialsAsync(this WebApplication app)
     {
         using var scope = app.Services.CreateScope();
@@ -88,6 +86,13 @@ public static class WebApplicationExtensions
             && string.IsNullOrEmpty(await credentialService.GetHologramKeyAsync()))
         {
             await credentialService.SetHologramKeyAsync(hologramKey);
+        }
+
+        var ingestKey = app.Configuration["Ingest:ApiKey"];
+        if (!string.IsNullOrWhiteSpace(ingestKey)
+            && !(await credentialService.GetStatusAsync()).IngestConfigured)
+        {
+            await credentialService.SetIngestKeyAsync(ingestKey);
         }
     }
 }

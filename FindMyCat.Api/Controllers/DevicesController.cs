@@ -1,4 +1,5 @@
-﻿using FindMyCat.Api.Contracts;
+﻿using System.Text.Json.Nodes;
+using FindMyCat.Api.Contracts;
 using FindMyCat.Core.Entities;
 using FindMyCat.Core.Errors;
 using FindMyCat.Core.Integrations.Hologram;
@@ -74,15 +75,15 @@ public class DevicesController(
     }
 
     [HttpGet("{deviceId:long}/state")]
-    public async Task<ActionResult<IReadOnlyList<DeviceEventResponse>>> GetState(long deviceId, CancellationToken cancellationToken)
+    public async Task<ActionResult<JsonObject>> GetState(long deviceId, CancellationToken cancellationToken)
     {
         var uniqueId = await ResolveUniqueIdAsync(deviceId, cancellationToken);
         var events = await deviceEventRepository.GetLatestPerKindAsync(uniqueId, cancellationToken);
-        return Ok(events.Select(DeviceEventResponse.FromDomain).ToList());
+        return Ok(DeviceEventResponse.State(events));
     }
 
     [HttpGet("{deviceId:long}/events")]
-    public async Task<ActionResult<IReadOnlyList<DeviceEventResponse>>> GetEvents(
+    public async Task<ActionResult<IReadOnlyList<JsonObject>>> GetEvents(
         long deviceId,
         [FromQuery] DeviceEventsRequest request,
         CancellationToken cancellationToken)
@@ -90,7 +91,7 @@ public class DevicesController(
         var uniqueId = await ResolveUniqueIdAsync(deviceId, cancellationToken);
         var events = await deviceEventRepository.GetEventsAsync(
             uniqueId, request.After ?? 0, request.Kind, request.Limit ?? DefaultEventLimit, cancellationToken);
-        return Ok(events.Select(DeviceEventResponse.FromDomain).ToList());
+        return Ok(events.Select(DeviceEventResponse.Event).ToList());
     }
 
     private async Task<string> ResolveUniqueIdAsync(long deviceId, CancellationToken cancellationToken)

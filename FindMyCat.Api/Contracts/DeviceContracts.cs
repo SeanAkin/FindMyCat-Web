@@ -1,8 +1,8 @@
-﻿using System.Text.Json;
+﻿using System.Globalization;
+using System.Text.Json.Nodes;
 using FindMyCat.Core.Entities;
 using FindMyCat.Core.Integrations.Traccar;
 using FindMyCat.Core.Integrations.Traccar.Socket;
-using FindMyCat.Core.Telemetry;
 
 namespace FindMyCat.Api.Contracts;
 
@@ -69,32 +69,35 @@ public sealed record HistoryRangeRequest(DateTimeOffset? From, DateTimeOffset? T
 
 public sealed record DeviceEventsRequest(long? After, string? Kind, int? Limit);
 
-public sealed record DeviceEventResponse(
-    long Id,
-    DateTimeOffset ReceivedAt,
-    string Kind,
-    object? Data,
-    JsonElement Raw)
+public static class DeviceEventResponse
 {
-    public static DeviceEventResponse FromDomain(DeviceEvent deviceEvent) => new(
-        deviceEvent.Id,
-        deviceEvent.ReceivedAt,
-        deviceEvent.Kind,
-        DeviceTelemetry.Parse(deviceEvent.Kind, deviceEvent.Payload),
-        RawPayload(deviceEvent.Payload));
-
-    private static JsonElement RawPayload(string payload)
+    public static JsonObject State(IEnumerable<DeviceEvent> latestPerKind)
     {
-        try
+        var state = new JsonObject();
+        foreach (var deviceEvent in latestPerKind)
         {
-            using var document = JsonDocument.Parse(payload);
-            return document.RootElement.Clone();
+            var fields = Payload(deviceEvent) as JsonObject ?? new JsonObject();
+            fields["id"] = deviceEvent.Id;
+            fields["receivedAt"] = Timestamp(deviceEvent.ReceivedAt);
+            state[deviceEvent.Kind] = fields;
         }
-        catch (JsonException)
-        {
-            return JsonSerializer.SerializeToElement(payload);
-        }
+
+        return state;
     }
+
+    public static JsonObject Event(DeviceEvent deviceEvent) => new()
+    {
+        ["id"] = deviceEvent.Id,
+        ["receivedAt"] = Timestamp(deviceEvent.ReceivedAt),
+        ["kind"] = deviceEvent.Kind,
+        ["payload"] = Payload(deviceEvent)
+    };
+
+    private static JsonNode? Payload(DeviceEvent deviceEvent) => JsonNode.Parse(deviceEvent.Payload);
+
+    // Whole seconds: Swift's ISO 8601 decoding rejects fractional ones.
+    private static string Timestamp(DateTimeOffset at) =>
+        at.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
 }
 
 public sealed record DeviceStatusResponse(

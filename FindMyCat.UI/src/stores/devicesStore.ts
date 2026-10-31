@@ -14,6 +14,7 @@ import { ApiError, toApiError } from '@/api/http'
 import type {
   DeviceEventResponse,
   DeviceResponse,
+  DeviceStateResponse,
   DeviceStatusResponse,
   PositionResponse,
   TraccarConnectionStatusResponse,
@@ -50,7 +51,7 @@ export interface DevicesState {
   historyError: ApiError | null
   fetchHistory: (deviceId: number, from: Date, to: Date) => Promise<void>
 
-  deviceState: DeviceEventResponse[]
+  deviceState: DeviceStateResponse
   deviceStateStatus: LoadStatus
   deviceStateError: ApiError | null
   fetchDeviceState: (deviceId: number) => Promise<void>
@@ -229,7 +230,7 @@ export const useDevicesStore = create<DevicesState>((set, get) => ({
       history: [],
       historyStatus: 'idle',
       historyError: null,
-      deviceState: [],
+      deviceState: {},
       deviceStateStatus: 'idle',
       deviceStateError: null,
       deviceEvents: [],
@@ -253,7 +254,7 @@ export const useDevicesStore = create<DevicesState>((set, get) => ({
     }
   },
 
-  deviceState: [],
+  deviceState: {},
   deviceStateStatus: 'idle',
   deviceStateError: null,
   fetchDeviceState: async (deviceId) => {

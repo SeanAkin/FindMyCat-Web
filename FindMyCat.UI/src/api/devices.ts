@@ -2,6 +2,7 @@ import { api } from '@/api/http'
 import type {
   DeviceEventResponse,
   DeviceResponse,
+  DeviceStateResponse,
   PositionResponse,
 } from '@/api/types'
 
@@ -25,7 +26,7 @@ export const getDeviceHistory = (
 }
 
 export const getDeviceState = (deviceId: number, signal?: AbortSignal) =>
-  api.get<DeviceEventResponse[]>(`/api/devices/${deviceId}/state`, signal)
+  api.get<DeviceStateResponse>(`/api/devices/${deviceId}/state`, signal)
 
 export const getDeviceEvents = (
   deviceId: number,

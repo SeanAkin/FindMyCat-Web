@@ -28,28 +28,31 @@ export interface PositionResponse {
 }
 
 export interface NetworkTelemetry {
-  status: string | null
-  mode: number | null
-  edrxSeconds: number | null
+  status?: string
+  mode?: number
+  edrx_s?: number
 }
 
 export interface CommandTelemetry {
-  command: string | null
-  status: string | null
-  reason: string | null
-  method: string | null
-  satellites: number | null
-  elapsedSeconds: number | null
-  battery: number | null
-  uptimeSeconds: number | null
+  command?: string
+  status?: string
+  reason?: string
+  method?: string
+  satellites?: number
+  elapsed_s?: number
+  battery?: number
+  uptime_s?: number
 }
+
+export type DeviceStateEntry = { id: number; receivedAt: string } & Record<string, unknown>
+
+export type DeviceStateResponse = Record<string, DeviceStateEntry>
 
 export interface DeviceEventResponse {
   id: number
   receivedAt: string
   kind: string
-  data: NetworkTelemetry | CommandTelemetry | null
-  raw: unknown
+  payload: Record<string, unknown>
 }
 
 export type DeviceStatus = 'online' | 'offline' | 'unknown'

@@ -81,50 +81,49 @@ public sealed class DeviceTelemetryEndpointsTests : IntegrationTestBase
         await SeedAsync("command", """{"command":"ping","status":"ok"}""");
         await SeedAsync("network", """{"status":"ok","mode":7,"edrx_s":81.92}""");
 
-        var events = await GetEventsAsync(client, "/api/devices/1/state");
+        var state = await GetEventsAsync(client, "/api/devices/1/state");
 
-        events.GetArrayLength().ShouldBe(2);
-        var network = events.EnumerateArray().Single(e => e.GetProperty("kind").GetString() == "network");
-        network.GetProperty("data").GetProperty("status").GetString().ShouldBe("ok");
-        network.GetProperty("data").GetProperty("mode").GetInt32().ShouldBe(7);
-        network.GetProperty("data").GetProperty("edrxSeconds").GetDouble().ShouldBe(81.92);
+        state.EnumerateObject().Select(p => p.Name).Order().ShouldBe(["command", "network"]);
+        var network = state.GetProperty("network");
+        network.GetProperty("status").GetString().ShouldBe("ok");
+        network.GetProperty("mode").GetInt32().ShouldBe(7);
+        network.GetProperty("edrx_s").GetDouble().ShouldBe(81.92);
+        network.GetProperty("id").GetInt64().ShouldBeGreaterThan(0);
     }
 
     [Fact]
-    public async Task Events_serialize_the_typed_command_shape()
+    public async Task State_dates_have_whole_seconds_for_swift()
+    {
+        var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
+        using var client = CreateAuthenticatedClient(user);
+        await ConfigureTraccarTokenAsync();
+        HaveDevice();
+        await SeedAsync("radio", """{"active":"LTE"}""");
+
+        var state = await GetEventsAsync(client, "/api/devices/1/state");
+
+        state.GetProperty("radio").GetProperty("receivedAt").GetString()
+            .ShouldMatch(@"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$");
+    }
+
+    [Fact]
+    public async Task Events_keep_the_collar_payload_as_sent()
     {
         var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
         using var client = CreateAuthenticatedClient(user);
         await ConfigureTraccarTokenAsync();
         HaveDevice();
         await SeedAsync("command",
-            """{"command":"ping","status":"ok","reason":"user","method":"wifi","satellites":9,"elapsed_s":42,"battery":3.9,"uptime_s":123456}""");
-
-        var events = await GetEventsAsync(client, "/api/devices/1/events");
-
-        var data = events.EnumerateArray().Single().GetProperty("data");
-        data.GetProperty("command").GetString().ShouldBe("ping");
-        data.GetProperty("method").GetString().ShouldBe("wifi");
-        data.GetProperty("satellites").GetInt32().ShouldBe(9);
-        data.GetProperty("elapsedSeconds").GetInt32().ShouldBe(42);
-        data.GetProperty("battery").GetDouble().ShouldBe(3.9);
-        data.GetProperty("uptimeSeconds").GetInt64().ShouldBe(123456L);
-    }
-
-    [Fact]
-    public async Task Events_return_raw_payload_for_an_unknown_kind()
-    {
-        var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
-        using var client = CreateAuthenticatedClient(user);
-        await ConfigureTraccarTokenAsync();
-        HaveDevice();
-        await SeedAsync("wifi", """{"networks":["home","office"]}""");
+            """{"command":"ping","status":"ok","method":"wifi","satellites":9,"elapsed_s":42,"battery":3.9,"uptime_s":123456}""");
 
         var events = await GetEventsAsync(client, "/api/devices/1/events");
 
         var single = events.EnumerateArray().Single();
-        single.GetProperty("data").ValueKind.ShouldBe(JsonValueKind.Null);
-        single.GetProperty("raw").GetProperty("networks").GetArrayLength().ShouldBe(2);
+        single.GetProperty("kind").GetString().ShouldBe("command");
+        var payload = single.GetProperty("payload");
+        payload.GetProperty("method").GetString().ShouldBe("wifi");
+        payload.GetProperty("elapsed_s").GetInt32().ShouldBe(42);
+        payload.GetProperty("uptime_s").GetInt64().ShouldBe(123456L);
     }
 
     [Fact]
