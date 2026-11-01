@@ -6,12 +6,14 @@ public sealed class StubHologramClient : IHologramClient
 {
     public Dictionary<string, int> DeviceIdsByImei { get; set; } = new();
     public List<(int HologramDeviceId, string Command)> SentMessages { get; } = [];
+    public Dictionary<int, HologramSimStatus> SimStatuses { get; } = new();
     public Exception? ThrowInstead { get; set; }
 
     public void Reset()
     {
         DeviceIdsByImei = new Dictionary<string, int>();
         SentMessages.Clear();
+        SimStatuses.Clear();
         ThrowInstead = null;
     }
 
@@ -30,4 +32,9 @@ public sealed class StubHologramClient : IHologramClient
         SentMessages.Add((hologramDeviceId, command));
         return Task.FromResult<string?>($"message-{SentMessages.Count}");
     }
+
+    public Task<HologramSimStatus> GetSimStatusAsync(string apiKey, int hologramDeviceId, CancellationToken cancellationToken = default) =>
+        ThrowInstead is not null
+            ? Task.FromException<HologramSimStatus>(ThrowInstead)
+            : Task.FromResult(SimStatuses.GetValueOrDefault(hologramDeviceId, new HologramSimStatus(null, null, null)));
 }

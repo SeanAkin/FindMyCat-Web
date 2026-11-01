@@ -89,6 +89,33 @@ public class HologramClientTests
     }
 
     [Fact]
+    public async Task GetSimStatus_reads_cellular_link_and_last_session()
+    {
+        var handler = StubHttpMessageHandler.ReturningJson(_ => (HttpStatusCode.OK, """
+            {"success":true,"data":{"id":555,
+              "links":{"cellular":[{"state":"LIVE","last_connect_time":"2026-11-01 10:00:00"}]},
+              "lastsession":{"active":true}}}
+            """));
+        var client = CreateClient(handler);
+
+        var sim = await client.GetSimStatusAsync("key", 555, TestContext.Current.CancellationToken);
+
+        sim.ShouldBe(new HologramSimStatus("LIVE", "2026-11-01 10:00:00", new HologramSession(true)));
+        handler.Requests.Single().RequestUri!.AbsolutePath.ShouldBe("/api/1/devices/555");
+    }
+
+    [Fact]
+    public async Task GetSimStatus_tolerates_missing_link_and_session()
+    {
+        var handler = StubHttpMessageHandler.ReturningJson(_ => (HttpStatusCode.OK, """{"success":true,"data":{"id":555}}"""));
+        var client = CreateClient(handler);
+
+        var sim = await client.GetSimStatusAsync("key", 555, TestContext.Current.CancellationToken);
+
+        sim.ShouldBe(new HologramSimStatus(null, null, null));
+    }
+
+    [Fact]
     public async Task Forbidden_response_throws_credential_rejected()
     {
         var handler = StubHttpMessageHandler.ReturningJson(_ =>

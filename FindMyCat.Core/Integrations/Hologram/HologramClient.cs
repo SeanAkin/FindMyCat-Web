@@ -15,7 +15,14 @@ public interface IHologramClient
     Task<int?> FindDeviceIdByImeiAsync(string apiKey, string imei, CancellationToken cancellationToken = default);
 
     Task<string?> SendMessageAsync(string apiKey, int hologramDeviceId, string command, CancellationToken cancellationToken = default);
+
+    Task<HologramSimStatus> GetSimStatusAsync(string apiKey, int hologramDeviceId, CancellationToken cancellationToken = default);
 }
+
+// Mirrors Hologram's device object: SIM state from links.cellular[0], session from lastsession.
+public sealed record HologramSimStatus(string? State, string? LastConnectTime, HologramSession? LastSession);
+
+public sealed record HologramSession(bool Active);
 
 public sealed class HologramClient(HttpClient httpClient, HologramSettings settings, ILogger<HologramClient> logger) : IHologramClient
 {
@@ -51,6 +58,16 @@ public sealed class HologramClient(HttpClient httpClient, HologramSettings setti
             cancellationToken);
         var payload = await ReadResponseAsync<SendMessageResponseDto>(response, cancellationToken);
         return payload.Data?.FirstOrDefault()?.MessageId;
+    }
+
+    public async Task<HologramSimStatus> GetSimStatusAsync(string apiKey, int hologramDeviceId, CancellationToken cancellationToken = default)
+    {
+        httpClient.DefaultRequestHeaders.Authorization = BasicAuth(apiKey);
+
+        using var response = await httpClient.GetAsync($"api/1/devices/{hologramDeviceId}", cancellationToken);
+        var payload = await ReadResponseAsync<DeviceResponseDto>(response, cancellationToken);
+        var link = payload.Data?.Links?.Cellular?.FirstOrDefault();
+        return new HologramSimStatus(link?.State, link?.LastConnectTime, payload.Data?.LastSession);
     }
 
     private static AuthenticationHeaderValue BasicAuth(string apiKey) =>
@@ -101,4 +118,18 @@ public sealed class HologramClient(HttpClient httpClient, HologramSettings setti
     internal sealed record SendMessageResponseDto(bool Success, string? Error, List<QueuedMessageDto>? Data) : IHologramEnvelope;
 
     internal sealed record QueuedMessageDto([property: JsonPropertyName("messageid")] string? MessageId);
+
+    internal sealed record DeviceResponseDto(bool Success, string? Error, DeviceDetailDto? Data) : IHologramEnvelope;
+
+    // lastsession is in the live API but missing from the OpenAPI snapshot.
+    internal sealed record DeviceDetailDto(
+        int Id,
+        DeviceLinksDto? Links,
+        [property: JsonPropertyName("lastsession")] HologramSession? LastSession);
+
+    internal sealed record DeviceLinksDto(List<CellularLinkDto>? Cellular);
+
+    internal sealed record CellularLinkDto(
+        string? State,
+        [property: JsonPropertyName("last_connect_time")] string? LastConnectTime);
 }

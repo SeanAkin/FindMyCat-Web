@@ -4,6 +4,7 @@ using System.Text.Json;
 using FindMyCat.Api.Contracts;
 using FindMyCat.Api.Errors;
 using FindMyCat.Core.Errors;
+using FindMyCat.Core.Integrations.Hologram;
 using FindMyCat.Core.Integrations.Traccar;
 using FindMyCat.IntegrationTests.Infrastructure;
 
@@ -283,6 +284,29 @@ public sealed class DevicesControllerTests : IntegrationTestBase
             .GetProperty("command");
         command.GetProperty("command").GetString().ShouldBe("lost");
         command.GetProperty("status").GetString().ShouldBe("fail");
+    }
+
+    [Fact]
+    public async Task Sim_returns_hologram_sim_status()
+    {
+        var user = await CreateUserAsync(cancellationToken: TestContext.Current.CancellationToken);
+        using var client = CreateAuthenticatedClient(user);
+        await ConfigureTraccarTokenAsync();
+        await ConfigureHologramKeyAsync();
+        Traccar.Devices = [new TraccarDevice(1, "Test Collar", "unique-1", "online", null, false, null)];
+        Hologram.DeviceIdsByImei["unique-1"] = 555;
+        Hologram.SimStatuses[555] = new HologramSimStatus("LIVE", "2026-11-01 10:00:00", new HologramSession(true));
+
+        var sim = await client.GetFromJsonAsync<JsonElement>("/api/devices/1/sim", TestContext.Current.CancellationToken);
+
+        sim.GetProperty("state").GetString().ShouldBe("LIVE");
+        sim.GetProperty("lastConnectTime").GetString().ShouldBe("2026-11-01 10:00:00");
+        sim.GetProperty("lastSession").GetProperty("active").GetBoolean().ShouldBeTrue();
+
+        var stored = (await client.GetFromJsonAsync<JsonElement>("/api/devices/1/state", TestContext.Current.CancellationToken))
+            .GetProperty("sim");
+        stored.GetProperty("state").GetString().ShouldBe("LIVE");
+        stored.GetProperty("lastSession").GetProperty("active").GetBoolean().ShouldBeTrue();
     }
 
     [Fact]

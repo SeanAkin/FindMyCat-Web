@@ -101,6 +101,15 @@ public class HologramApiContractTests(HologramOpenApiSpecFixture fixture) : ICla
         AssertDtoSatisfiesSchema(ResponseSchemaPointer("/devices/messages", HttpMethod.Post, "200"), sampleResponse);
     }
 
+    [Fact]
+    public void CellularLink_still_has_the_state_we_read()
+    {
+        // last_connect_time and lastsession are live-API fields the snapshot omits.
+        var link = fixture.Document.Components!.Schemas!["CellularLinkInDevice"];
+
+        link.Properties!.ContainsKey("state").ShouldBeTrue();
+    }
+
     private static JsonPointer RequestSchemaPointer(string apiPath, HttpMethod method) =>
         JsonPointer.Create(
             "paths", apiPath, method.Method.ToLowerInvariant(), "requestBody", "content", "application/json", "schema");

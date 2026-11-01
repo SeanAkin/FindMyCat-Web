@@ -102,6 +102,10 @@ public class DevicesController(
         return device.UniqueId;
     }
 
+    [HttpGet("{deviceId:long}/sim")]
+    public async Task<ActionResult<HologramSimStatus>> GetSim(long deviceId, CancellationToken cancellationToken) =>
+        Ok(await hologramService.GetSimStatusAsync(deviceId, cancellationToken));
+
     [HttpPost("{deviceId:long}/command/{command}")]
     public async Task<IActionResult> SendCommand(long deviceId, string command, CancellationToken cancellationToken)
     {
