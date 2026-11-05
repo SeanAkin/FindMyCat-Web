@@ -28,6 +28,13 @@ public class IngestController(
         return located ? NoContent() : UnprocessableEntity();
     }
 
+    [HttpPost("gnss-fix")]
+    public async Task<IActionResult> GnssFix([FromBody] IngestGnssFixRequest request, CancellationToken cancellationToken)
+    {
+        await telemetryIngestService.RecordGnssFixAsync(request.Id, request.Fix, cancellationToken);
+        return NoContent();
+    }
+
     [HttpPost("cell-scan")]
     public async Task<IActionResult> CellScan([FromBody] IngestCellScanRequest request, CancellationToken cancellationToken)
     {

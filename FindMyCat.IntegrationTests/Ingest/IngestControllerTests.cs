@@ -185,6 +185,38 @@ public sealed class IngestControllerTests : IntegrationTestBase
         ping.Payload.ShouldContain("only 1 access point(s)");
     }
 
+    [Fact]
+    public async Task Gnss_fix_logs_the_ping_as_answered_with_satellites()
+    {
+        var apiKey = await RotateIngestKeyAsync();
+        using var client = CreateIngestClient(apiKey);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/ingest/gnss-fix", new { id = "gnss-collar", fix = "47.610000,-122.330000,7,12.40,87" },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        var ping = await Db.DeviceEvents.AsNoTracking()
+            .SingleAsync(e => e.UniqueId == "gnss-collar", TestContext.Current.CancellationToken);
+        ping.Kind.ShouldBe("command");
+        ping.Payload.ShouldContain("\"status\":\"ok\"");
+        ping.Payload.ShouldContain("\"method\":\"gnss\"");
+        ping.Payload.ShouldContain("\"satellites\":7");
+        ping.Payload.ShouldContain("\"accuracy_m\":12");
+    }
+
+    [Fact]
+    public async Task Gnss_fix_that_is_not_a_fix_is_rejected()
+    {
+        var apiKey = await RotateIngestKeyAsync();
+        using var client = CreateIngestClient(apiKey);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/ingest/gnss-fix", new { id = "bad-fix", fix = "not,a" }, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+    }
+
     // One cell: MCC 310, MNC 410, TAC 2862, cell 21532831, -97 dBm; battery 87.
     private const string OneCellScan = "02011027000036019A012E0B9F9148019FFF57";
 

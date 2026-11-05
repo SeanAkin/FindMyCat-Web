@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using FindMyCat.Core.Entities;
 using FindMyCat.Core.Errors;
@@ -9,6 +10,10 @@ namespace FindMyCat.Core.Services;
 public interface ITelemetryIngestService
 {
     Task RecordStatusAsync(string uniqueId, JsonElement payload, CancellationToken cancellationToken = default);
+
+    // A collar position published over LTE is always a GNSS fix (WiFi and cell go through
+    // their own scan topics), so it is logged as the ping it answers.
+    Task RecordGnssFixAsync(string uniqueId, string fixCsv, CancellationToken cancellationToken = default);
 }
 
 public sealed class TelemetryIngestService(IDeviceEventRepository deviceEventRepository, ILogger<TelemetryIngestService> logger) : ITelemetryIngestService
@@ -32,6 +37,29 @@ public sealed class TelemetryIngestService(IDeviceEventRepository deviceEventRep
             cancellationToken);
 
         logger.LogInformation("Stored {Kind} telemetry event for {UniqueId}", report.Kind, uniqueId);
+    }
+
+    public Task RecordGnssFixAsync(string uniqueId, string fixCsv, CancellationToken cancellationToken = default)
+    {
+        // Same layout the collar publishes for Traccar: lat,lon,satellites,accuracy_m,battery.
+        var fields = fixCsv.Split(',');
+        if (fields.Length < 4
+            || !int.TryParse(fields[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var satellites)
+            || !double.TryParse(fields[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var accuracyMeters))
+        {
+            throw new TelemetryPayloadException($"GNSS fix was not lat,lon,satellites,accuracy: '{fixCsv}'");
+        }
+
+        var ping = new Dictionary<string, object>
+        {
+            ["kind"] = DeviceCommandKind,
+            ["command"] = "ping",
+            ["status"] = "ok",
+            ["method"] = "gnss",
+            ["satellites"] = satellites,
+            ["accuracy_m"] = Math.Round(accuracyMeters)
+        };
+        return RecordStatusAsync(uniqueId, JsonSerializer.SerializeToElement(ping), cancellationToken);
     }
 
     private readonly record struct StatusReport(string Kind, string Json)

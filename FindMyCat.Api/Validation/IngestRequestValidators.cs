@@ -24,6 +24,15 @@ public sealed class IngestWifiScanRequestValidator : AbstractValidator<IngestWif
     }
 }
 
+public sealed class IngestGnssFixRequestValidator : AbstractValidator<IngestGnssFixRequest>
+{
+    public IngestGnssFixRequestValidator()
+    {
+        RuleFor(request => request.Id).NotEmpty();
+        RuleFor(request => request.Fix).NotEmpty();
+    }
+}
+
 public sealed class IngestCellScanRequestValidator : AbstractValidator<IngestCellScanRequest>
 {
     public IngestCellScanRequestValidator()
