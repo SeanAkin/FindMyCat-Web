@@ -28,6 +28,16 @@ public sealed class FirmwareTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task An_image_is_never_served_from_a_cache()
+    {
+        using var client = CreateClient();
+
+        var response = await client.GetAsync("/api/firmware/app_update.bin", TestContext.Current.CancellationToken);
+
+        response.Headers.CacheControl!.NoStore.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task A_download_can_resume_from_a_byte_offset()
     {
         using var client = CreateClient();

@@ -21,6 +21,9 @@ public partial class FirmwareController(FirmwareSettings settings) : ControllerB
             return NotFound();
         }
 
+        // The file is replaced in place on each release, so clients must not reuse a stored copy.
+        Response.Headers.CacheControl = "no-store";
+
         // Ranges let the collar resume a download after a dropped connection.
         return PhysicalFile(path, "application/octet-stream", enableRangeProcessing: true);
     }
