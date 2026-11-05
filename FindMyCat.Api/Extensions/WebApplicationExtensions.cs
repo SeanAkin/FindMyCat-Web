@@ -76,14 +76,14 @@ public static class WebApplicationExtensions
 
         var traccarToken = app.Configuration["Traccar:ApiToken"];
         if (!string.IsNullOrWhiteSpace(traccarToken)
-            && string.IsNullOrEmpty(await credentialService.GetTraccarTokenAsync()))
+            && traccarToken != await credentialService.GetTraccarTokenAsync())
         {
             await credentialService.SetTraccarTokenAsync(traccarToken);
         }
 
         var hologramKey = app.Configuration["Hologram:ApiKey"];
         if (!string.IsNullOrWhiteSpace(hologramKey)
-            && string.IsNullOrEmpty(await credentialService.GetHologramKeyAsync()))
+            && hologramKey != await credentialService.GetHologramKeyAsync())
         {
             await credentialService.SetHologramKeyAsync(hologramKey);
         }
