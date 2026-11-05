@@ -216,7 +216,7 @@ public sealed class IngestControllerTests : IntegrationTestBase
         ping.Kind.ShouldBe("command");
         ping.Payload.ShouldContain("\"command\":\"ping-cell\"");
         ping.Payload.ShouldContain("\"status\":\"ok\"");
-        ping.Payload.ShouldContain("\"cells\":1");
+        ping.Payload.ShouldContain("\"cell_towers\":1");
     }
 
     [Fact]

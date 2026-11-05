@@ -45,7 +45,7 @@ public sealed class CellLocator(
         await RecordPingAsync(uniqueId, new JsonObject
         {
             ["status"] = "ok",
-            ["cells"] = scan.CellTowers.Count,
+            ["cell_towers"] = scan.CellTowers.Count,
             ["accuracy_m"] = Math.Round(fix.AccuracyMeters)
         }, cancellationToken);
         return true;
