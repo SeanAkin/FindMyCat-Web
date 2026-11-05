@@ -1,5 +1,5 @@
 using System.Globalization;
-using FindMyCat.Core.Integrations.WifiLocation;
+using FindMyCat.Core.Integrations.Geolocation;
 
 namespace FindMyCat.Core.Integrations.Traccar;
 
@@ -32,7 +32,7 @@ public sealed class TraccarPositionClient(HttpClient httpClient) : ITraccarPosit
         catch (Exception ex) when (ex is HttpRequestException
                                        || ex is TaskCanceledException && !cancellationToken.IsCancellationRequested)
         {
-            throw new WifiLocateException("location service unreachable");
+            throw new GeolocationException("location service unreachable");
         }
     }
 }

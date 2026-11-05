@@ -184,4 +184,56 @@ public sealed class IngestControllerTests : IntegrationTestBase
             .SingleAsync(e => e.UniqueId == "lonely-collar", TestContext.Current.CancellationToken);
         ping.Payload.ShouldContain("only 1 access point(s)");
     }
+
+    // One cell: MCC 310, MNC 410, TAC 2862, cell 21532831, -97 dBm; battery 87.
+    private const string OneCellScan = "02011027000036019A012E0B9F9148019FFF57";
+
+    [Fact]
+    public async Task Cell_scan_without_an_api_key_is_unauthorized()
+    {
+        using var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/ingest/cell-scan", new { id = "collar-1", scan = OneCellScan }, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        TraccarPositions.Positions.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Cell_scan_becomes_a_position_and_records_the_cell_ping()
+    {
+        var apiKey = await RotateIngestKeyAsync();
+        using var client = CreateIngestClient(apiKey);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/ingest/cell-scan", new { id = "cell-collar", scan = OneCellScan }, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        TraccarPositions.Positions.ShouldBe([("cell-collar", Google.Fix, 87)]);
+        var ping = await Db.DeviceEvents.AsNoTracking()
+            .SingleAsync(e => e.UniqueId == "cell-collar", TestContext.Current.CancellationToken);
+        ping.Kind.ShouldBe("command");
+        ping.Payload.ShouldContain("\"command\":\"ping-cell\"");
+        ping.Payload.ShouldContain("\"status\":\"ok\"");
+        ping.Payload.ShouldContain("\"cells\":1");
+    }
+
+    [Fact]
+    public async Task Cell_scan_google_cannot_place_records_a_failed_cell_ping()
+    {
+        var apiKey = await RotateIngestKeyAsync();
+        using var client = CreateIngestClient(apiKey);
+        Google.FailWith = "cells not known to google";
+
+        var response = await client.PostAsJsonAsync(
+            "/api/ingest/cell-scan", new { id = "unknown-cell", scan = OneCellScan }, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        TraccarPositions.Positions.ShouldBeEmpty();
+        var ping = await Db.DeviceEvents.AsNoTracking()
+            .SingleAsync(e => e.UniqueId == "unknown-cell", TestContext.Current.CancellationToken);
+        ping.Payload.ShouldContain("\"status\":\"fail\"");
+        ping.Payload.ShouldContain("cells not known to google");
+    }
 }

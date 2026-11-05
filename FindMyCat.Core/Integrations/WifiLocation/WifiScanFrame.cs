@@ -1,10 +1,10 @@
+using FindMyCat.Core.Integrations.Geolocation;
+
 namespace FindMyCat.Core.Integrations.WifiLocation;
 
 public sealed record WifiAccessPoint(string MacAddress, int SignalStrength);
 
 public sealed record WifiScan(IReadOnlyList<WifiAccessPoint> AccessPoints, int? BatteryPercent);
-
-public sealed class WifiLocateException(string reason) : Exception(reason);
 
 // Mirrors WiFi/wifi_scan.h on the collar.
 public static class WifiScanFrame
@@ -19,14 +19,14 @@ public static class WifiScanFrame
     {
         if (frame.Length < HeaderBytes || frame[0] != MessageType)
         {
-            throw new WifiLocateException($"not a scan frame ({frame.Length} bytes)");
+            throw new GeolocationException($"not a scan frame ({frame.Length} bytes)");
         }
 
         var count = frame[1];
         var batteryOffset = HeaderBytes + count * BytesPerAccessPoint;
         if (frame.Length != batteryOffset + TrailerBytes)
         {
-            throw new WifiLocateException($"length mismatch: count {count}, {frame.Length} bytes");
+            throw new GeolocationException($"length mismatch: count {count}, {frame.Length} bytes");
         }
 
         var accessPoints = new List<WifiAccessPoint>(count);

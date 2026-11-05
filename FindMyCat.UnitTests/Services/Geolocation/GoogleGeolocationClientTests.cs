@@ -1,10 +1,12 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using FindMyCat.Core.Integrations.CellLocation;
+using FindMyCat.Core.Integrations.Geolocation;
 using FindMyCat.Core.Integrations.WifiLocation;
 using FindMyCat.UnitTests.Infrastructure;
 
-namespace FindMyCat.UnitTests.Services.WifiLocation;
+namespace FindMyCat.UnitTests.Services.Geolocation;
 
 public sealed class GoogleGeolocationClientTests
 {
@@ -46,11 +48,55 @@ public sealed class GoogleGeolocationClientTests
     }
 
     [Fact]
+    public async Task Sends_lte_cell_towers_and_leaves_out_unknown_signal_strength()
+    {
+        string? sentBody = null;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            sentBody = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    """{"location":{"lat":47.6,"lng":-122.3},"accuracy":900}""", Encoding.UTF8, "application/json")
+            };
+        });
+        CellTower[] cellTowers =
+        [
+            new(CellId: 21532831, LocationAreaCode: 2862, MobileCountryCode: 310, MobileNetworkCode: 410, SignalStrength: -97),
+            new(CellId: 21532832, LocationAreaCode: 2862, MobileCountryCode: 310, MobileNetworkCode: 410, SignalStrength: null)
+        ];
+
+        var fix = await CreateClient(handler).LocateAsync(cellTowers, TestContext.Current.CancellationToken);
+
+        fix.ShouldBe(new GeoFix(47.6, -122.3, 900));
+        var body = JsonDocument.Parse(sentBody!).RootElement;
+        body.GetProperty("radioType").GetString().ShouldBe("lte");
+        var first = body.GetProperty("cellTowers")[0];
+        first.GetProperty("cellId").GetInt64().ShouldBe(21532831);
+        first.GetProperty("locationAreaCode").GetInt32().ShouldBe(2862);
+        first.GetProperty("mobileCountryCode").GetInt32().ShouldBe(310);
+        first.GetProperty("mobileNetworkCode").GetInt32().ShouldBe(410);
+        first.GetProperty("signalStrength").GetInt32().ShouldBe(-97);
+        body.GetProperty("cellTowers")[1].TryGetProperty("signalStrength", out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Unknown_cells_give_a_short_reason()
+    {
+        var handler = StubHttpMessageHandler.ReturningJson(_ => (HttpStatusCode.NotFound, """{"error":{}}"""));
+        CellTower[] cellTowers = [new(1, 2, 310, 410, null)];
+
+        var ex = await Should.ThrowAsync<GeolocationException>(() => CreateClient(handler).LocateAsync(cellTowers));
+
+        ex.Message.ShouldBe("cells not known to google");
+    }
+
+    [Fact]
     public async Task Unknown_wifi_gives_a_short_reason()
     {
         var handler = StubHttpMessageHandler.ReturningJson(_ => (HttpStatusCode.NotFound, """{"error":{}}"""));
 
-        var ex = await Should.ThrowAsync<WifiLocateException>(() => CreateClient(handler).LocateAsync(AccessPoints));
+        var ex = await Should.ThrowAsync<GeolocationException>(() => CreateClient(handler).LocateAsync(AccessPoints));
 
         ex.Message.ShouldBe("wifi not known to google");
     }
@@ -60,7 +106,7 @@ public sealed class GoogleGeolocationClientTests
     {
         var handler = StubHttpMessageHandler.ReturningJson(_ => (HttpStatusCode.InternalServerError, "{}"));
 
-        var ex = await Should.ThrowAsync<WifiLocateException>(() => CreateClient(handler).LocateAsync(AccessPoints));
+        var ex = await Should.ThrowAsync<GeolocationException>(() => CreateClient(handler).LocateAsync(AccessPoints));
 
         ex.Message.ShouldBe("location service unreachable");
     }
@@ -70,7 +116,7 @@ public sealed class GoogleGeolocationClientTests
     {
         var handler = StubHttpMessageHandler.ReturningJson(_ => (HttpStatusCode.OK, "{}"));
 
-        var ex = await Should.ThrowAsync<WifiLocateException>(
+        var ex = await Should.ThrowAsync<GeolocationException>(
             () => CreateClient(handler, apiKey: null).LocateAsync(AccessPoints));
 
         ex.Message.ShouldBe("no google geolocation key");

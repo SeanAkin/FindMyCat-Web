@@ -1,3 +1,4 @@
+using FindMyCat.Core.Integrations.Geolocation;
 using FindMyCat.Core.Integrations.WifiLocation;
 
 namespace FindMyCat.UnitTests.Services.WifiLocation;
@@ -44,7 +45,7 @@ public sealed class WifiScanFrameTests
     {
         var frame = Frame(87, (Home, -48));
 
-        Should.Throw<WifiLocateException>(() => WifiScanFrame.Decode(frame[..^1]))
+        Should.Throw<GeolocationException>(() => WifiScanFrame.Decode(frame[..^1]))
             .Message.ShouldStartWith("length mismatch");
     }
 
@@ -54,13 +55,13 @@ public sealed class WifiScanFrameTests
         var frame = Frame(87, (Home, -48));
         frame[0] = 0x02;
 
-        Should.Throw<WifiLocateException>(() => WifiScanFrame.Decode(frame))
+        Should.Throw<GeolocationException>(() => WifiScanFrame.Decode(frame))
             .Message.ShouldStartWith("not a scan frame");
     }
 
     [Fact]
     public void A_truncated_header_is_rejected()
     {
-        Should.Throw<WifiLocateException>(() => WifiScanFrame.Decode([0x01, 0x02]));
+        Should.Throw<GeolocationException>(() => WifiScanFrame.Decode([0x01, 0x02]));
     }
 }

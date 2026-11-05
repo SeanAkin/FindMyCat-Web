@@ -1,7 +1,7 @@
 using FindMyCat.Core.Integrations.Hologram;
 using FindMyCat.Core.Integrations.Traccar;
 using FindMyCat.Core.Integrations.Traccar.Socket;
-using FindMyCat.Core.Integrations.WifiLocation;
+using FindMyCat.Core.Integrations.Geolocation;
 using FindMyCat.Data;
 using FindMyCat.IntegrationTests.Stubs;
 using Microsoft.AspNetCore.Authentication;

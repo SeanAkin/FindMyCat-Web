@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using FindMyCat.Core.Integrations.Geolocation;
 using FindMyCat.Core.Integrations.Traccar;
 using FindMyCat.Core.Integrations.WifiLocation;
 using Microsoft.Extensions.Logging;
@@ -30,13 +31,13 @@ public sealed class WifiLocator(
             scan = WifiScanFrame.Decode(Convert.FromHexString(scanHex));
             if (scan.AccessPoints.Count < MinimumAccessPoints)
             {
-                throw new WifiLocateException($"only {scan.AccessPoints.Count} access point(s)");
+                throw new GeolocationException($"only {scan.AccessPoints.Count} access point(s)");
             }
 
             fix = await google.LocateAsync(scan.AccessPoints, cancellationToken);
             await traccar.AddPositionAsync(uniqueId, fix, scan.BatteryPercent, cancellationToken);
         }
-        catch (Exception ex) when (ex is WifiLocateException or FormatException)
+        catch (Exception ex) when (ex is GeolocationException or FormatException)
         {
             var reason = ex is FormatException ? "scan was not hex" : ex.Message;
             logger.LogWarning("WiFi scan from {UniqueId} dropped: {Reason}", uniqueId, reason);

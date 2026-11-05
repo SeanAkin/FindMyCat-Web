@@ -1,3 +1,5 @@
+using FindMyCat.Core.Integrations.CellLocation;
+using FindMyCat.Core.Integrations.Geolocation;
 using FindMyCat.Core.Integrations.Traccar;
 using FindMyCat.Core.Integrations.WifiLocation;
 
@@ -15,8 +17,14 @@ public sealed class StubGoogleGeolocationClient : IGoogleGeolocationClient
     }
 
     public Task<GeoFix> LocateAsync(IReadOnlyList<WifiAccessPoint> accessPoints, CancellationToken cancellationToken = default) =>
+        FixOrFailure();
+
+    public Task<GeoFix> LocateAsync(IReadOnlyList<CellTower> cellTowers, CancellationToken cancellationToken = default) =>
+        FixOrFailure();
+
+    private Task<GeoFix> FixOrFailure() =>
         FailWith is not null
-            ? Task.FromException<GeoFix>(new WifiLocateException(FailWith))
+            ? Task.FromException<GeoFix>(new GeolocationException(FailWith))
             : Task.FromResult(Fix);
 }
 

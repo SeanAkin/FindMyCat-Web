@@ -5,7 +5,7 @@ using FindMyCat.Core;
 using FindMyCat.Core.Integrations.Hologram;
 using FindMyCat.Core.Integrations.Traccar;
 using FindMyCat.Core.Integrations.Traccar.Socket;
-using FindMyCat.Core.Integrations.WifiLocation;
+using FindMyCat.Core.Integrations.Geolocation;
 using FindMyCat.Core.Security;
 using FindMyCat.Core.Services;
 using FindMyCat.Data;

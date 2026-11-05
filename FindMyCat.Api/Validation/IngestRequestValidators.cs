@@ -23,3 +23,12 @@ public sealed class IngestWifiScanRequestValidator : AbstractValidator<IngestWif
         RuleFor(request => request.Scan).NotEmpty();
     }
 }
+
+public sealed class IngestCellScanRequestValidator : AbstractValidator<IngestCellScanRequest>
+{
+    public IngestCellScanRequestValidator()
+    {
+        RuleFor(request => request.Id).NotEmpty();
+        RuleFor(request => request.Scan).NotEmpty();
+    }
+}
